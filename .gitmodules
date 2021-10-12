@@ -1,0 +1,4 @@
+[submodule "3rd_party/bazel"]
+	path = 3rd_party/bazel
+	url = https://github.com/bazelbuild/bazel.git
+	shallow = true

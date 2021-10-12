@@ -1,0 +1,23 @@
+{
+    \"Category\" : \"Build Systems\",
+    \"Name\" : \"Bazel Project Manager\",
+    \"Version\" : \"0.0.1\",
+    \"CompatVersion\" : \"0.0.1\",
+    \"Vendor\" : \"Max Breev\",
+    \"Copyright\" : \"(C) Max Breev\",
+    \"License\" : \"BSD\",
+    \"Description\" : \"Bazel build system support\",
+    \"Url\" : \"http://www.com/\",
+    $$dependencyList,
+
+    \"Mimetypes\" : [
+        \"<?xml version=\'1.0\'?>\",
+        \"<mime-info xmlns=\'http://www.freedesktop.org/standards/shared-mime-info\'>\",
+        \"  <mime-type type=\'text/x-bazel\'>\",
+        \"    <comment>Bazel workspace file</comment>\",
+        \"    <glob pattern=\'WORKSPACE.bazel\'/>\",
+        \"    <glob pattern=\'WORKSPACE\'/>\",
+        \"  </mime-type>\",
+        \"</mime-info>\"
+    ]
+}
