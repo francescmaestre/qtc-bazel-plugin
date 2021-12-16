@@ -62,6 +62,9 @@ add_qtc_plugin(BazelProjectManager
     README.md
     BazelProjectManager.json.in
 
+    logging.h
+    logging.cpp
+
     plugin_constants.h
     plugin_global.h
 
@@ -79,4 +82,7 @@ add_qtc_plugin(BazelProjectManager
 
     BazelBuildSystem.cpp
     BazelBuildSystem.h
+
+    BazelBuildStep.cpp
+    BazelBuildStep.h
 )

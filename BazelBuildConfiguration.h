@@ -9,14 +9,19 @@ namespace BazelProjectManager::Internal {
 class BazelBuildSystem;
 
 
-/// Provides access to the Bazel build system.
+/// Manages build parameters and steps for a Bazel-bazed project.
 class BazelBuildConfiguration final : public ProjectExplorer::BuildConfiguration {
 public:
-  /// Instantiated by QtC whenever it needs to handle a project of the corresponding mime type.
+  /// Designated ctor. Called by the IDE to handle a project of the corresponding mime type.
   explicit BazelBuildConfiguration(ProjectExplorer::Target* target, Utils::Id id);
 
   // BuildConfiguration interface
-  ProjectExplorer::BuildSystem* buildSystem() const override;
+
+  /// Interface to the underlying build system.
+  ProjectExplorer::BuildSystem* buildSystem() const override final;
+
+  /// UI for the project configuration.
+  ProjectExplorer::NamedWidget* createConfigWidget() override final;
 
 private:
   std::unique_ptr<BazelBuildSystem> _buildSystem;
@@ -30,6 +35,7 @@ public:
     BazelBuildConfigurationFactory();
 
 private:
+    /// Provides info about the supported build modes.
     /// @see ProjectExplorer::BuildConfigurationFactory::BuildGenerator
     QList<ProjectExplorer::BuildInfo> generateBuild(
       const ProjectExplorer::Kit* kit, const Utils::FilePath& projectPath, bool forSetup

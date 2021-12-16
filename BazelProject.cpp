@@ -10,29 +10,20 @@
 namespace BazelProjectManager::Internal {
 
 BazelProject::BazelProject(const Utils::FilePath& fileName)
-  : ProjectExplorer::Project(Constants::Project::MIMETYPE, fileName),
-    _importer(std::make_unique<BazelProjectImporter>(fileName)) {
-
+  : ProjectExplorer::Project(Constants::Project::MIMETYPE, fileName)
+{
   setId(Constants::Project::ID);
+  setDisplayName(projectDirectory().fileName());
 
   setProjectLanguages({
     ProjectExplorer::Constants::C_LANGUAGE_ID,
     ProjectExplorer::Constants::CXX_LANGUAGE_ID
   });
 
-  setDisplayName(projectDirectory().fileName());
-
-  setNeedsBuildConfigurations(false);
+  setNeedsBuildConfigurations(true);
+  setNeedsDeployConfigurations(false);
   setHasMakeInstallEquivalent(false);
   setCanBuildProducts();
-}
-
-ProjectExplorer::Tasks BazelProject::projectIssues(const ProjectExplorer::Kit*) const {
-  return {};
-}
-
-ProjectExplorer::ProjectImporter* BazelProject::projectImporter() const {
-  return _importer.get();
 }
 
 ProjectExplorer::DeploymentKnowledge BazelProject::deploymentKnowledge() const {
