@@ -1,17 +1,20 @@
 #include <iostream>
 
 #include "bazel_helpers.h"
-#include <3rd_party/bazel/src/main/protobuf/build.pb.h>
+#include <google/protobuf/util/json_util.h>
 
 
 int main(int argc, char** argv) {
-  const auto& qr = BazelProjectManager::Internal::bazelQuery("//...");
+  const auto& [ec, qr] = BazelProjectManager::Internal::bazelQuery(".", "//...");
   const auto n_targets = qr.target_size();
-  std::cout << "Got " << n_targets << " targets:\n";
-  for (int i = 0; i < n_targets; i++) {
-    const auto& target = qr.target(i);
-    std::cout << " - " << blaze_query::Target::Discriminator_Name(target.type()) << "\n";
-  }
+  std::cout << "Bazel exited with " << ec << ". Got " << n_targets << " targets:\n";
+
+  std::string msgJson;
+  google::protobuf::util::JsonPrintOptions jOps;
+  jOps.add_whitespace = true;
+  const auto jsonConvResult = google::protobuf::util::MessageToJsonString(qr, &msgJson, jOps);
+
+  std::cout << msgJson << "\n";
 
   return 0;
 }

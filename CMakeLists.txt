@@ -40,8 +40,7 @@ target_link_libraries(
   bazel_api
   PUBLIC
     protobuf::libprotobuf
-  PRIVATE
-    fmt::fmt
+    ${QtX}::Core
 )
 
 # Just a POC tool to test Bazel's protobuf API

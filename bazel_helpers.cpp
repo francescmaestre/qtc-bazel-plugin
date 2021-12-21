@@ -1,25 +1,41 @@
 #include "bazel_helpers.h"
 
-#include <cstdio>
 #include <iostream>
 #include <memory>
 
-#include <fmt/format.h>
-
-#include <3rd_party/bazel/src/main/protobuf/build.pb.h>
+#include <QProcess>
 
 
 namespace BazelProjectManager::Internal {
 
-blaze_query::QueryResult bazelQuery(const std::string_view query) {
-  std::string cmd = fmt::format("bazel query {} --output proto", query);
-  std::unique_ptr<FILE, decltype(&pclose)> stream{popen(cmd.c_str(), "r"), pclose};
+namespace {
+QString qsFromStringView(const std::string_view s) {
+  return QString::fromUtf8(s.data(), s.size());
+}
+}
 
+std::tuple<int, blaze_query::QueryResult> bazelQuery(
+  const QString& workspaceDir, const QString& query
+) {
+  QProcess bazelProc;
+  bazelProc.setWorkingDirectory(workspaceDir);
+  bazelProc.start("bazel", {"query", query, "--output", "proto"});
+  bazelProc.waitForFinished();
+
+  // TODO: Use some streaming instead of storing the entire output in memory.
+  const auto& bazelOutput = bazelProc.readAllStandardOutput();
   blaze_query::QueryResult qr;
-  if (!qr.ParseFromFileDescriptor(fileno(stream.get()))) {
+  if (!qr.ParseFromArray(bazelOutput.data(), bazelOutput.size())) {
     throw std::runtime_error("Could not parse bazel output.");
   }
-  return qr;
+
+  return {bazelProc.exitCode(), std::move(qr)};
+}
+
+std::tuple<int, blaze_query::QueryResult> queryPackageRules(
+  const QString& workspaceDir, const QString& packagePath
+) {
+  return bazelQuery(workspaceDir, QString("kind(rule, //%1:*").arg(packagePath));
 }
 
 }  // namespace BazelProjectManager::Internal
