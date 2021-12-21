@@ -50,10 +50,6 @@ QVariantMap BazelBuildStep::toMap() const
   return map;
 }
 
-void BazelBuildStep::setupOutputFormatter(Utils::OutputFormatter* formatter)
-{
-}
-
 QWidget* BazelBuildStep::createConfigWidget()
 {
   return nullptr;

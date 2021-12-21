@@ -43,7 +43,7 @@ public:
 
   /// IDEs customization point allowing to process build tool's output in order to detect things
   /// like progress, errors, or paths to project files to turn those into "hyperlinks".
-  void setupOutputFormatter(Utils::OutputFormatter* formatter) override;
+  // void setupOutputFormatter(Utils::OutputFormatter* formatter) override;
 
   /// Create UI for extended build step configuration. This may provide things like target selection
   /// or invokation options specific to the underlying build tool.
