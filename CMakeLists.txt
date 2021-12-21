@@ -48,7 +48,9 @@ add_executable(qb qb.cpp)
 target_link_libraries(qb PRIVATE bazel_api)
 
 
-add_qtc_plugin(BazelProjectManager
+add_qtc_plugin(
+  BazelProjectManager
+
   PLUGIN_DEPENDS
     QtCreator::Core
     QtCreator::ProjectExplorer
@@ -85,3 +87,4 @@ add_qtc_plugin(BazelProjectManager
     BazelBuildStep.cpp
     BazelBuildStep.h
 )
+target_link_libraries(BazelProjectManager PRIVATE bazel_api)

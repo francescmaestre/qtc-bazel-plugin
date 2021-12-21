@@ -1,18 +1,11 @@
 #include "bazel_helpers.h"
 
-#include <iostream>
 #include <memory>
 
 #include <QProcess>
 
 
 namespace BazelProjectManager::Internal {
-
-namespace {
-QString qsFromStringView(const std::string_view s) {
-  return QString::fromUtf8(s.data(), s.size());
-}
-}
 
 std::tuple<int, blaze_query::QueryResult> bazelQuery(
   const QString& workspaceDir, const QString& query
@@ -35,7 +28,7 @@ std::tuple<int, blaze_query::QueryResult> bazelQuery(
 std::tuple<int, blaze_query::QueryResult> queryPackageRules(
   const QString& workspaceDir, const QString& packagePath
 ) {
-  return bazelQuery(workspaceDir, QString("kind(rule, //%1:*").arg(packagePath));
+  return bazelQuery(workspaceDir, QString("kind(rule, //%1:*)").arg(packagePath));
 }
 
 }  // namespace BazelProjectManager::Internal
