@@ -1,11 +1,15 @@
 #pragma once
 
-#include <qtsupport/qtprojectimporter.h>
+#include <projectexplorer/projectimporter.h>
 
 
 namespace BazelProjectManager::Internal {
 
-class BazelProjectImporter : public QtSupport::QtProjectImporter
+/// @note THIS IS JUST A STUB AND UNUSED!
+///
+/// An importer may be used to attempt to discover existing project configuration on the file
+/// system - e.g. in a conventionally named build directory nearby.
+class BazelProjectImporter final : public ProjectExplorer::ProjectImporter
 {
 public:
   explicit BazelProjectImporter(const Utils::FilePath& path);

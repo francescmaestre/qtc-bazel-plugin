@@ -3,7 +3,8 @@
 namespace BazelProjectManager::Internal {
 
 BazelProjectImporter::BazelProjectImporter(const Utils::FilePath& path)
-  : QtSupport::QtProjectImporter(path){
+  : ProjectExplorer::ProjectImporter(path)
+{
 }
 
 
@@ -17,7 +18,7 @@ QList<void*> BazelProjectImporter::examineDirectory(
 }
 
 bool BazelProjectImporter::matchKit(void* directoryData, const ProjectExplorer::Kit* k) const {
-  return false;
+  return true;
 }
 
 ProjectExplorer::Kit* BazelProjectImporter::createKit(void* directoryData) const {
