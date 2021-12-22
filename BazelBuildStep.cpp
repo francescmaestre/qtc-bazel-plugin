@@ -14,7 +14,6 @@
 
 namespace
 {
-const char STEP_ID[] = "BazelProjectManager.BuildStep";
 const char CONFIG_KEY_TARGETS[] = "BazelProjectManager.BuildStep.Targets";
 const char CONFIG_KEY_CMD_ARGS[] = "BazelProjectManager.BuildStep.CmdArgs";
 
@@ -27,13 +26,15 @@ namespace BazelProjectManager::Internal
 
 BazelBuildStepFactory::BazelBuildStepFactory()
 {
-  registerStep<BazelBuildStep>(STEP_ID);
+  registerStep<BazelBuildStep>(BazelBuildStep::STEP_ID);
   setDisplayName(BazelBuildStep::tr("Bazel Build"));
   setSupportedProjectType(Constants::Project::ID);
 }
 
 
 // -- BazelBuildStep --
+
+const char BazelBuildStep::STEP_ID[] = "BazelProjectManager.BuildStep";
 
 BazelBuildStep::BazelBuildStep(ProjectExplorer::BuildStepList* bsl, Utils::Id id)
   : ProjectExplorer::AbstractProcessStep(bsl, id)

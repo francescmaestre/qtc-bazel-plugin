@@ -51,6 +51,8 @@ public:
   /// Ownership is transferred to the caller.
   QWidget* createConfigWidget() override;
 
+  static const char STEP_ID[];
+
 private:
   /// Prepares command line to execute bazel for this build step.
   Utils::CommandLine bazelCommand() const;

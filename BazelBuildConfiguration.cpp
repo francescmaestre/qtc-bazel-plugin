@@ -3,6 +3,7 @@
 #include <projectexplorer/buildinfo.h>
 #include <utils/qtcassert.h>
 
+#include "BazelBuildStep.h"
 #include "BazelBuildSystem.h"
 #include "logging.h"
 #include "plugin_constants.h"
@@ -63,6 +64,7 @@ namespace BazelProjectManager::Internal {
 BazelBuildConfiguration::BazelBuildConfiguration(ProjectExplorer::Target* target, Utils::Id id)
   : ProjectExplorer::BuildConfiguration(target, id),
     _buildSystem(std::make_unique<BazelBuildSystem>(this)) {
+  appendInitialBuildStep(BazelBuildStep::STEP_ID);
 }
 
 ProjectExplorer::BuildSystem* BazelBuildConfiguration::buildSystem() const {
