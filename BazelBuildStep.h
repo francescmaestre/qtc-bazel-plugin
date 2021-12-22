@@ -3,6 +3,7 @@
 #include <projectexplorer/buildstep.h>
 
 #include <projectexplorer/abstractprocessstep.h>
+#include <projectexplorer/processparameters.h>
 
 
 namespace Utils
@@ -47,13 +48,21 @@ public:
 
   /// Create UI for extended build step configuration. This may provide things like target selection
   /// or invokation options specific to the underlying build tool.
+  /// Ownership is transferred to the caller.
   QWidget* createConfigWidget() override;
 
 private:
   /// Prepares command line to execute bazel for this build step.
-  Utils::CommandLine bazelCommand();
+  Utils::CommandLine bazelCommand() const;
 
-  QStringList _targetsList;
+  /// React to the build args text edit in the config widget being edited.
+  void buildArgsEdited(const QString& args);
+
+  /// Update resulting command line after changing the `buildArgs_`.
+  void updateCommandLine();
+
+  QStringList buildArgs_ = {"//..."};  // Build all by default.
+  ProjectExplorer::ProcessParameters params_;  // Holds the resulting command line.
 };  // class BazelBuildStep
 
 
