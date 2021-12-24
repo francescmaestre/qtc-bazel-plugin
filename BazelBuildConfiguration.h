@@ -6,8 +6,6 @@
 
 namespace BazelProjectManager::Internal {
 
-class BazelBuildSystem;
-
 
 /// Manages build parameters and steps for a Bazel-bazed project.
 class BazelBuildConfiguration final : public ProjectExplorer::BuildConfiguration {
@@ -18,13 +16,13 @@ public:
   // BuildConfiguration interface
 
   /// Interface to the underlying build system.
-  ProjectExplorer::BuildSystem* buildSystem() const override final;
+  /// In our case a "fallback" is provided by the `BazelProject` (see `setBuildSystemCreator(...)`).
+  // ProjectExplorer::BuildSystem* buildSystem() const override final;
 
   /// UI for the project configuration.
   ProjectExplorer::NamedWidget* createConfigWidget() override final;
 
 private:
-  std::unique_ptr<BazelBuildSystem> _buildSystem;
 };
 
 

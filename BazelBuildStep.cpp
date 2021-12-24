@@ -9,7 +9,6 @@
 #include <utils/filepath.h>
 
 // Own:
-#include "BazelBuildSystem.h"
 #include "plugin_constants.h"
 
 namespace
@@ -43,7 +42,7 @@ BazelBuildStep::BazelBuildStep(ProjectExplorer::BuildStepList* bsl, Utils::Id id
   setCommandLineProvider([this] { return params_.command(); });
   setDisplayName(tr("Build Step:", "BazelBuildStep config widget display name."));
 
-  // This should only be done after setting the display name, since the later is used for the step
+  // This should only be done after the display name is set, since the later is used for the step
   // summary which is also set inside.
   updateCommandLine();
 }

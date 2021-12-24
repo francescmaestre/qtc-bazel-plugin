@@ -27,7 +27,6 @@ public:
 /// This implements the invokation of Bazel process to perform a build action on some target.
 class BazelBuildStep final : public ProjectExplorer::AbstractProcessStep
 {
-  Q_OBJECT
 public:
   /// A designated ctor. Used by the IDE.
   BazelBuildStep(ProjectExplorer::BuildStepList* bsl, Utils::Id id);
@@ -54,6 +53,8 @@ public:
   static const char STEP_ID[];
 
 private:
+  Q_OBJECT
+
   /// Prepares command line to execute bazel for this build step.
   Utils::CommandLine bazelCommand() const;
 

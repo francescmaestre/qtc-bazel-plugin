@@ -1,10 +1,10 @@
 #include "BazelBuildConfiguration.h"
 
 #include <projectexplorer/buildinfo.h>
+#include <projectexplorer/kit.h>
 #include <utils/qtcassert.h>
 
 #include "BazelBuildStep.h"
-#include "BazelBuildSystem.h"
 #include "logging.h"
 #include "plugin_constants.h"
 
@@ -65,10 +65,6 @@ BazelBuildConfiguration::BazelBuildConfiguration(ProjectExplorer::Target* target
   : ProjectExplorer::BuildConfiguration(target, id),
     _buildSystem(std::make_unique<BazelBuildSystem>(this)) {
   appendInitialBuildStep(BazelBuildStep::STEP_ID);
-}
-
-ProjectExplorer::BuildSystem* BazelBuildConfiguration::buildSystem() const {
-  return _buildSystem.get();
 }
 
 ProjectExplorer::NamedWidget* BazelBuildConfiguration::createConfigWidget()

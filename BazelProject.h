@@ -1,7 +1,14 @@
 #pragma once
 
+#include <set>
+#include <thread>
+#include <mutex>
+
 #include <projectexplorer/project.h>
 
+namespace ProjectExplorer {
+class BuildTargetInfo;
+}
 
 namespace BazelProjectManager::Internal {
 
@@ -9,6 +16,9 @@ namespace BazelProjectManager::Internal {
 class BazelProject final : public ProjectExplorer::Project {
 public:
   BazelProject(const Utils::FilePath &fileName);
+
+  void requestReparse();
+  const QList<ProjectExplorer::BuildTargetInfo>& targets() const { return targets_; }
 
   // Project interface:
 
@@ -22,9 +32,8 @@ public:
   /// Tell the IDE how much info we have about the project deployment.
   ProjectExplorer::DeploymentKnowledge deploymentKnowledge() const override;
 
-  // TODO: May need to implement this in order to display stuff in the explorer view:
-  // ProjectNode *rootProjectNode() const override;
-  // Or probably better just setRootProjectNode(...)
+signals:
+  void projectStructureReady();
 
 protected:
   // Project interface:
@@ -32,6 +41,27 @@ protected:
   /// Handles the addition of a new target build environment (not a build target, misleading name).
   /// Each target environment may have several build configurations.
   // bool setupTarget(ProjectExplorer::Target* t) override;
+
+private:
+  Q_OBJECT
+
+  // BazelBuildSystem should be able to delegate project parsing to a centrally responsible place
+  // which is here.
+  // friend class BazelBuildSystem;
+
+  QDir workspaceDir() const;
+
+  /// Begin re-collecting the entire project structure in the background, unless already doing so.
+  /// Upon completion this will emit the `projectStructureReady` signal.
+  void startProjectStructureUpdate();
+
+  void rebuildProjectStructure(
+    ProjectExplorer::FolderNode* rootNode,
+    QList<ProjectExplorer::BuildTargetInfo>& buildTargets,
+    std::set<Utils::FilePath>& knownSources
+  );
+
+  QList<ProjectExplorer::BuildTargetInfo> targets_;
 };
 
 }  // namespace BazelProjectManager::Internal
