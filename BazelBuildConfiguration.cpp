@@ -20,38 +20,42 @@ enum class CompileMode
   CompileMode_LAST
 };
 
-void operator++(CompileMode& m)  // prefix form
-{
-  m = static_cast<CompileMode>(
-    static_cast<std::underlying_type<CompileMode>::type>(m) + 1
-  );  // Yeah, this is unsafe. Stop me! :-D
+constexpr auto compileModeToInteger(const CompileMode m) {
+  return static_cast<std::underlying_type<CompileMode>::type>(m);
 }
 
-ProjectExplorer::BuildInfo createBuildInfo(CompileMode buildType)
+void operator++(CompileMode& m)  // prefix form
+{
+  // Yeah, this is unsafe. Stop me! :-D
+  m = static_cast<CompileMode>(compileModeToInteger(m) + 1);
+}
+
+ProjectExplorer::BuildInfo createBuildInfo(CompileMode mode)
 {
   using ProjectExplorer::BuildConfiguration;
 
   ProjectExplorer::BuildInfo info;
+  info.extraInfo = compileModeToInteger(mode);
 
-  switch (buildType) {
-  case CompileMode::Fast:
+  switch (mode) {
+    case CompileMode::Fast:
       info.typeName = "Fast";
       info.displayName = BuildConfiguration::tr("Fast");
       info.buildType = BuildConfiguration::Unknown;
       break;
-  case CompileMode::Dbg:
+    case CompileMode::Dbg:
       info.typeName = "Debug";
       info.displayName = BuildConfiguration::tr("Debug");
       info.buildType = BuildConfiguration::Debug;
       break;
-  case CompileMode::Opt:
+    case CompileMode::Opt:
       info.typeName = "Optimised";
       info.displayName = BuildConfiguration::tr("Optimised");
       info.buildType = BuildConfiguration::Release;
-      break;
-  default:
-      QTC_CHECK(false);
-      break;
+        break;
+    default:
+        QTC_CHECK(false);
+        break;
   }
 
   return info;
@@ -62,8 +66,7 @@ ProjectExplorer::BuildInfo createBuildInfo(CompileMode buildType)
 namespace BazelProjectManager::Internal {
 
 BazelBuildConfiguration::BazelBuildConfiguration(ProjectExplorer::Target* target, Utils::Id id)
-  : ProjectExplorer::BuildConfiguration(target, id),
-    _buildSystem(std::make_unique<BazelBuildSystem>(this)) {
+  : ProjectExplorer::BuildConfiguration(target, id) {
   appendInitialBuildStep(BazelBuildStep::STEP_ID);
 }
 
