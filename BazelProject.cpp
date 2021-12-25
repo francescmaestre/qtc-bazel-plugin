@@ -117,11 +117,11 @@ public:
   // Since there's only one possible caller of these, we just let take the ownership.
 
   std::unique_ptr<ProjectExplorer::ProjectNode> takeRootNode() {
-    return std::move(rootNode_);
+    return std::exchange(rootNode_, {});
   }
 
   QList<ProjectExplorer::BuildTargetInfo> takeTargets() {
-    return std::move(appTargets_);
+    return std::exchange(appTargets_, {});
   }
 
 signals:
