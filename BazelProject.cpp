@@ -5,6 +5,7 @@
 #include <projectexplorer/buildtargetinfo.h>
 #include <projectexplorer/projectnodes.h>
 #include <utils/filepath.h>
+#include <utils/runextensions.h>
 
 #include "BazelBuildSystem.h"
 #include "plugin_constants.h"
@@ -80,14 +81,135 @@ void processBazelRule(
   parentFolder->addNode(std::move(targetNode));
 }  // processBazelRule
 
+}  // namespace BazelProjectManager::Internal
 
-}
 
-// public
+class BazelProject::ProjectScanner : public QObject {
+public:
+  ProjectScanner(Utils::FilePath projectFilePath)
+    : projectFilePath_{std::move(projectFilePath)} {
+  }
+
+  void startAsync() {
+    appTargets_.clear();
+    targetSources_.clear();
+    rootNode_ = std::make_unique<ProjectExplorer::ProjectNode>(workspaceDirPath());
+
+    Utils::runAsync(
+      [this]() {
+        try {
+          rescanProject(rootNode_.get());
+        }
+        catch(const std::exception& e) {
+          emit scanComplete(false);
+          qCWarning(BazelPluginLog) << "Project scan failed: " << e.what();
+        }
+        catch(...) {
+          emit scanComplete(false);
+          qCWarning(BazelPluginLog) << "Project scan failed for unknown reason.";
+        }
+
+        emit scanComplete(true);
+      }
+    );
+  }
+
+  // Since there's only one possible caller of these, we just let take the ownership.
+
+  std::unique_ptr<ProjectExplorer::ProjectNode> takeRootNode() {
+    return std::move(rootNode_);
+  }
+
+  QList<ProjectExplorer::BuildTargetInfo> takeTargets() {
+    return std::move(appTargets_);
+  }
+
+signals:
+  void scanComplete(bool good);
+
+private:
+  Utils::FilePath workspaceDirPath() const { return projectFilePath_.parentDir(); }
+
+  QDir workspaceDir() const { return workspaceDirPath().toDir(); }
+
+  void rescanProject(ProjectExplorer::FolderNode* rootNode) {
+    QDir rootDir = rootNode->path();
+
+    if (rootDir.exists(BAZEL_PACKAGE_BUILD_FILE_NAME)) {  // This is a Bazel package root.
+      // TODO: Add overlay icong to the current folder node.
+
+      const auto fileAbsPath = rootNode->filePath().pathAppended(BAZEL_PACKAGE_BUILD_FILE_NAME);
+      // TODO: Add overlay icong to the BUILD file.
+      rootNode->addNode(std::make_unique<ProjectExplorer::FileNode>(
+        fileAbsPath,
+        ProjectExplorer::FileType::Project
+      ));
+      targetSources_.insert(fileAbsPath);
+
+      const auto& packagePath = workspaceDir().relativeFilePath(rootDir.path());
+      const auto& [exitCode, qr] = queryPackageRules(workspaceDirPath().toString(), packagePath);
+
+      const auto n_targets = qr.target_size();
+      qCDebug(BazelPluginLog)
+        << "Bazel package " << packagePath << " has " << n_targets << " targets";
+
+      for (int i = 0; i < n_targets; i++) {
+        const auto& bazelTarget = qr.target(i);
+        if (bazelTarget.type() != blaze_query::Target_Discriminator_RULE) {
+          continue;
+        }
+        processBazelRule(bazelTarget.rule(), rootNode, appTargets_, targetSources_);
+      }  // for
+    }  // if (rootDir.exists(BAZEL_PACKAGE_BUILD_FILE_NAME))
+
+    // List files not belonging to any build target.
+    // TODO: Handle WORKSPACE files specially: mark as FileType::Project and add a custom icon.
+    const auto& fileNames = rootDir.entryList(QDir::Files, QDir::Name);
+    for (const auto& fileName : fileNames) {
+      const auto fileAbsPath = rootNode->filePath().pathAppended(fileName);
+      if (targetSources_.find(fileAbsPath) != targetSources_.cend()) {
+        continue;  // Skip those belonging to some target.
+      }
+      rootNode->addNode(std::make_unique<ProjectExplorer::FileNode>(
+        fileAbsPath,
+        ProjectExplorer::FileType::Unknown
+      ));
+    }
+
+    // Process subdirectories in the same way.
+    const auto& subdirNames = rootDir.entryList(QDir::AllDirs | QDir::NoDotAndDotDot, QDir::Name);
+    for (const auto& subdir : subdirNames) {
+      // FIXME: Make up a more robust chek here.
+      if (subdir.startsWith("bazel-")) {
+        continue;  // This is one of Bazel's own build dirs. We don't want to go in there.
+      }
+      auto subdirNode = std::make_unique<ProjectExplorer::FolderNode>(
+        Utils::FilePath::fromString(rootDir.filePath(subdir))
+      );
+      subdirNode->setDisplayName(subdir);
+      rescanProject(subdirNode.get());
+      rootNode->addNode(std::move(subdirNode));
+    }
+  }  // rebuildProjectStructure
+
+  Q_OBJECT
+
+  Utils::FilePath projectFilePath_;
+
+  std::set<Utils::FilePath> targetSources_;
+  std::unique_ptr<ProjectExplorer::ProjectNode> rootNode_;
+  QList<ProjectExplorer::BuildTargetInfo> appTargets_;
+};  // class ProjectScanner
+
+
+// BazelProject public
 
 BazelProject::BazelProject(const Utils::FilePath& fileName)
   : ProjectExplorer::Project(Constants::Project::MIMETYPE, fileName)
 {
+  scanner_ = std::make_unique<ProjectScanner>(projectFilePath());
+  connect(scanner_.get(), &ProjectScanner::scanComplete, this, &BazelProject::onScanComplete);
+
   setId(Constants::Project::ID);
   setDisplayName(projectDirectory().fileName());
 
@@ -108,10 +230,6 @@ BazelProject::BazelProject(const Utils::FilePath& fileName)
   startProjectStructureUpdate();
 }
 
-void BazelProject::requestReparse() {
-  startProjectStructureUpdate();
-}
-
 ProjectExplorer::DeploymentKnowledge BazelProject::deploymentKnowledge() const
 {
   return ProjectExplorer::DeploymentKnowledge::Bad;
@@ -122,87 +240,21 @@ ProjectExplorer::DeploymentKnowledge BazelProject::deploymentKnowledge() const
 QDir BazelProject::workspaceDir() const { return projectDirectory().toDir(); }
 
 void BazelProject::startProjectStructureUpdate() {
-
-  QList<ProjectExplorer::BuildTargetInfo> targets;
-  std::set<Utils::FilePath> targetSources{projectFilePath()};
-
-  auto rootNode = std::make_unique<ProjectExplorer::ProjectNode>(projectDirectory());
-  rootNode->addNode(std::make_unique<ProjectExplorer::FileNode>(
-    projectFilePath(),
-    ProjectExplorer::FileType::Project
-  ));
-
-  rebuildProjectStructure(rootNode.get(), targets, targetSources);
-
-  setRootProjectNode(std::move(rootNode));
-  std::swap(targets_, targets);
-
-  emit projectStructureReady();
+  if (!parserMutex_.try_lock()) {
+    return;
+  }
+  scanner_->startAsync();
 }
 
+void BazelProject::onScanComplete(bool good) {
+  setRootProjectNode(scanner_->takeRootNode());
+  targets_ = scanner_->takeTargets();
+  emit projectScanComplete(good);
 
-void BazelProject::rebuildProjectStructure(
-  ProjectExplorer::FolderNode* rootNode,
-  QList<ProjectExplorer::BuildTargetInfo>& buildTargets,
-  std::set<Utils::FilePath>& knownSources
-) {
-  QDir rootDir = rootNode->path();
-
-  if (rootDir.exists(BAZEL_PACKAGE_BUILD_FILE_NAME)) {  // This is a Bazel package root.
-    // TODO: Add overlay icong to the current folder node.
-
-    const auto fileAbsPath = rootNode->filePath().pathAppended(BAZEL_PACKAGE_BUILD_FILE_NAME);
-    // TODO: Add overlay icong to the BUILD file.
-    rootNode->addNode(std::make_unique<ProjectExplorer::FileNode>(
-      fileAbsPath,
-      ProjectExplorer::FileType::Project
-    ));
-    knownSources.insert(fileAbsPath);
-
-    const auto& packagePath = workspaceDir().relativeFilePath(rootDir.path());
-    const auto& [exitCode, qr] = queryPackageRules(workspaceDir().path(), packagePath);
-
-    const auto n_targets = qr.target_size();
-    qCDebug(BazelPluginLog)
-      << "Bazel package " << packagePath << " has " << n_targets << " targets";
-
-    for (int i = 0; i < n_targets; i++) {
-      const auto& bazelTarget = qr.target(i);
-      if (bazelTarget.type() != blaze_query::Target_Discriminator_RULE) {
-        continue;
-      }
-      processBazelRule(bazelTarget.rule(), rootNode, buildTargets, knownSources);
-    }  // for
-  }  // if (rootDir.exists(BAZEL_PACKAGE_BUILD_FILE_NAME))
-
-  // List files not belonging to any build target.
-  const auto& fileNames = rootDir.entryList(QDir::Files, QDir::Name);
-  for (const auto& fileName : fileNames) {
-    const auto fileAbsPath = rootNode->filePath().pathAppended(fileName);
-    if (knownSources.find(fileAbsPath) != knownSources.cend()) {
-      continue;  // Skip those belonging to some target.
-    }
-    rootNode->addNode(std::make_unique<ProjectExplorer::FileNode>(
-      fileAbsPath,
-      ProjectExplorer::FileType::Unknown
-    ));
-  }
-
-  // Process subdirectories in the same way.
-  const auto& subdirNames = rootDir.entryList(QDir::AllDirs | QDir::NoDotAndDotDot, QDir::Name);
-  for (const auto& subdir : subdirNames) {
-    // FIXME: Make up a more robust chek here.
-    if (subdir.startsWith("bazel-")) {
-      continue;  // This is one of Bazel's own build dirs. We don't want to go in there.
-    }
-    auto subdirNode = std::make_unique<ProjectExplorer::FolderNode>(
-      Utils::FilePath::fromString(rootDir.filePath(subdir))
-    );
-    subdirNode->setDisplayName(subdir);
-    rebuildProjectStructure(subdirNode.get(), buildTargets, knownSources);
-    rootNode->addNode(std::move(subdirNode));
-  }
+  parserMutex_.unlock();
 }
-
 
 }  // namespace BazelProjectManager::Internal
+
+
+#include "BazelProject.moc"

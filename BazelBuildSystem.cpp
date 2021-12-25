@@ -24,14 +24,13 @@ BazelBuildSystem::BazelBuildSystem(ProjectExplorer::BuildConfiguration* buildCon
 
 void BazelBuildSystem::construct() {
   connect(
-   bazelProject(), &BazelProject::projectStructureReady,
+   bazelProject(), &BazelProject::projectScanComplete,
    this, &BazelBuildSystem::onTargetsParsed
   );
 
-  // In the current implementation by the time we get constructed BazelProject has parsed it all.
-  onTargetsParsed();
-  // Importand for the IDE. Oherwise the Build button shall stay disabled.
-  emitParsingFinished(true);
+  if (!bazelProject()->projectScanned()) {
+    requestParse();
+  }
 }
 
 void BazelBuildSystem::triggerParsing() {
@@ -39,26 +38,30 @@ void BazelBuildSystem::triggerParsing() {
   if (_parseGuard.guardsProject())
     return;
   _parseGuard = guardParsingRun();
-  qCDebug(BazelPluginLog) << "Reparsing project structure...";
 
   try {
-    bazelProject()->requestReparse();
-    _parseGuard.markAsSuccess();  // This is responsible for `emitParsingFinished(true)`.
+    bazelProject()->startProjectStructureUpdate();
   }
   catch(const std::exception& e) {
-    qCWarning(BazelPluginLog) << "Reparsing project failed: " << e.what();
+    _parseGuard = {};
+    qCWarning(BazelPluginLog) << "Could not start project scan: " << e.what();
   }
   catch(...) {
-    qCWarning(BazelPluginLog) << "Reparsing project failed with unknown error.";
+    _parseGuard = {};
+    qCWarning(BazelPluginLog) << "Could not start project scan for unknown reason.";
   }
-  _parseGuard = {};
 }
 
 BazelProject* BazelBuildSystem::bazelProject() const {
   return static_cast<BazelProject*>(project());
 }
 
-void BazelBuildSystem::onTargetsParsed() {
+void BazelBuildSystem::onTargetsParsed(bool good) {
+  if (good) {
+    _parseGuard.markAsSuccess();  // This is responsible for `emitParsingFinished(true)`.
+  }
+  _parseGuard = {};
+
   // FIXME: This should be important but the effect is currently unclear.
   setApplicationTargets(bazelProject()->targets());
   emitBuildSystemUpdated();

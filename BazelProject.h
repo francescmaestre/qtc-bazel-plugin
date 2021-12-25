@@ -17,7 +17,15 @@ class BazelProject final : public ProjectExplorer::Project {
 public:
   BazelProject(const Utils::FilePath &fileName);
 
-  void requestReparse();
+  /// @returns whether at least one successfull project scan has been complete.
+  bool projectScanned() const { return goodScanAtLeastOnce_; }
+
+  /// Begin re-collecting the entire project structure in the background, unless already doing so.
+  /// Upon completion this will emit the `projectStructureReady` signal.
+  void startProjectStructureUpdate();
+
+  /// @returns the list of known build targets.
+  /// @sa `startProjectStructureUpdate`
   const QList<ProjectExplorer::BuildTargetInfo>& targets() const { return targets_; }
 
   // Project interface:
@@ -33,7 +41,7 @@ public:
   ProjectExplorer::DeploymentKnowledge deploymentKnowledge() const override;
 
 signals:
-  void projectStructureReady();
+  void projectScanComplete(bool good);
 
 protected:
   // Project interface:
@@ -51,15 +59,13 @@ private:
 
   QDir workspaceDir() const;
 
-  /// Begin re-collecting the entire project structure in the background, unless already doing so.
-  /// Upon completion this will emit the `projectStructureReady` signal.
-  void startProjectStructureUpdate();
+  class ProjectScanner;
 
-  void rebuildProjectStructure(
-    ProjectExplorer::FolderNode* rootNode,
-    QList<ProjectExplorer::BuildTargetInfo>& buildTargets,
-    std::set<Utils::FilePath>& knownSources
-  );
+  void onScanComplete(bool good);
+
+  std::mutex parserMutex_;  // Guards the project parser from multiple invocations.
+  std::unique_ptr<ProjectScanner> scanner_;
+  bool goodScanAtLeastOnce_ = false;
 
   QList<ProjectExplorer::BuildTargetInfo> targets_;
 };

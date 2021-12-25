@@ -43,7 +43,7 @@ private:
 
   BazelProject* bazelProject() const;
 
-  void onTargetsParsed();
+  void onTargetsParsed(bool good);
 
   ProjectExplorer::BuildSystem::ParseGuard _parseGuard;
 };
