@@ -6,6 +6,11 @@
 
 #include <projectexplorer/project.h>
 
+
+namespace CppTools {
+class CppProjectUpdater;
+}
+
 namespace ProjectExplorer {
 class BuildTargetInfo;
 }
@@ -63,11 +68,14 @@ private:
 
   void onScanComplete(bool good);
 
-  std::mutex parserMutex_;  // Guards the project parser from multiple invocations.
+  std::mutex scannerMutex_;  // Guards the project scanner from multiple invocations.
   std::unique_ptr<ProjectScanner> scanner_;
   bool goodScanAtLeastOnce_ = false;
 
+  // A lightweight collection of buildable targets.
   QList<ProjectExplorer::BuildTargetInfo> targets_;
+
+  std::unique_ptr<CppTools::CppProjectUpdater> cppCodeModelUpdater_;
 };
 
 }  // namespace BazelProjectManager::Internal

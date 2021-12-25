@@ -53,6 +53,7 @@ add_qtc_plugin(
 
   PLUGIN_DEPENDS
     QtCreator::Core
+    QtCreator::CppTools
     QtCreator::ProjectExplorer
 
   DEPENDS
