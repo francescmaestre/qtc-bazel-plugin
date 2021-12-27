@@ -100,22 +100,22 @@ void BazelProject::ProjectScanner::startAsync() {
   rootNode_ = std::make_unique<ProjectExplorer::ProjectNode>(workspaceDirPath());
 
   Utils::runAsync(
-  ProjectExplorer::ProjectExplorerPlugin::sharedThreadPool(),
-  [this]() {
-    try {
-      scanFolder(rootNode_.get());
-    }
-    catch(const std::exception& e) {
-      emit scanComplete(false);
-      qCWarning(BazelPluginLog) << "Project scan failed: " << e.what();
-    }
-    catch(...) {
-      emit scanComplete(false);
-      qCWarning(BazelPluginLog) << "Project scan failed for unknown reason.";
-    }
+    ProjectExplorer::ProjectExplorerPlugin::sharedThreadPool(),
+    [this]() {
+      try {
+        scanFolder(rootNode_.get());
+      }
+      catch(const std::exception& e) {
+        emit scanComplete(false);
+        qCWarning(BazelPluginLog) << "Project scan failed: " << e.what();
+      }
+      catch(...) {
+        emit scanComplete(false);
+        qCWarning(BazelPluginLog) << "Project scan failed for unknown reason.";
+      }
 
-    emit scanComplete(true);
-  }
+      emit scanComplete(true);
+    }
   );
 }
 
