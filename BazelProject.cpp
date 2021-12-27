@@ -1,5 +1,7 @@
 #include "BazelProject.h"
 
+#include <regex>
+
 #include <coreplugin/icontext.h>
 #include <cpptools/cppprojectupdater.h>
 #include <projectexplorer/buildconfiguration.h>
@@ -27,6 +29,7 @@ namespace {
 
 const char BAZEL_PACKAGE_BUILD_FILE_NAME[] = "BUILD";
 const char BAZEL_PACKAGE_BUILD_FILE_NAME_W_EXT[] = "BUILD.bazel";
+const char BUILD_ICON[] = ":/projectexplorer/images/build.png";
 
 }  // namespace BazelProjectManager::Internal
 
@@ -154,6 +157,7 @@ void BazelProject::ProjectScanner::scanFolder(ProjectExplorer::FolderNode* folde
   }  // if (rootDir.exists(BAZEL_PACKAGE_BUILD_FILE_NAME))
 
   // List files not belonging to any build target.
+  // FIXME: These still need to belong to some RawProjectPart!
   // TODO: Handle WORKSPACE files specially: mark as FileType::Project and add a custom icon.
   const auto& fileNames = rootDir.entryList(QDir::Files, QDir::Name);
   for (const auto& fileName : fileNames) {
@@ -170,7 +174,7 @@ void BazelProject::ProjectScanner::scanFolder(ProjectExplorer::FolderNode* folde
   // Process subdirectories in the same way.
   const auto& subdirNames = rootDir.entryList(QDir::AllDirs | QDir::NoDotAndDotDot, QDir::Name);
   for (const auto& subdir : subdirNames) {
-    // FIXME: Make up a more robust chek here.
+    // FIXME: Make up a more robust check here.
     if (subdir.startsWith("bazel-")) {
       continue;  // This is one of Bazel's own build dirs. We don't want to go in there.
     }
@@ -209,20 +213,31 @@ void BazelProject::ProjectScanner::processBazelRule(
 
     // Collect input sources.
     for (int i = 0; i < bazelRule.rule_input_size(); ++i) {
-      const auto inputLabelQS = QString::fromStdString(bazelRule.rule_input(i));
-      if (!inputLabelQS.startsWith("//")) {
-        continue;  // Ignore external labels or anything that is definitely not a file.
-        // FIXME: This may still be a label pointing to another target, not a source file.
-        // E.g.:
-        // "//lib:hello-time",
-        // "//main:hello-greet",
-        // "//main:hello-world.cc",
-      }
-      const auto fileName = inputLabelQS.split(":").back();
-      const auto fileAbsPath = parentFolder->filePath().pathAppended(fileName);
-      knownSources_.insert(fileAbsPath);
+      const auto& inputLabel = bazelRule.rule_input(i);
 
-      part.files.push_back(fileAbsPath.toString());
+      // TODO: Verify against actual Starlark syntax rules.
+      static const std::regex labelRe{"^(@\\S+)?/((/[^/:]+)*):(([^/:]+/)*[^/:]+)$"};
+      std::smatch matchResults;
+      if (!std::regex_match(inputLabel, matchResults, labelRe)) {
+        qCWarning(BazelPluginLog) << "Unrecognized target input: " << inputLabel.c_str();
+        continue;
+      }
+
+      const std::ssub_match repoSubmatch = matchResults[1];
+      if (repoSubmatch.length()) {
+        continue;  // TODO: Or can there also be source files from external repos?
+      }
+
+      const QString packagePath = QString::fromStdString(matchResults.str(2));
+      const QString relFilePath = QString::fromStdString(matchResults.str(4));
+
+      const Utils::FilePath absFilePath = workspaceDirPath()/packagePath/relFilePath;
+      if (!absFilePath.exists()) {
+        continue;  // This way we filter out inputs which are non-files, or are non-existent.
+      }
+
+      knownSources_.insert(absFilePath);
+      part.files.push_back(absFilePath.toString());
     }  // for
 
     parts_.push_back(std::move(part));
@@ -246,18 +261,18 @@ void BazelProject::ProjectScanner::processBazelRule(
 
   // Create explorer tree nonde.
   {
-    auto targetNode = std::make_unique<ProjectExplorer::ProjectNode>(
-    Utils::FilePath::fromString(buildTarget.displayName)
-    );
-    // Make this appear differently, not like a normal directory.
-    targetNode->setIcon(":/projectexplorer/images/build.png");
+    auto targetNode =
+      std::make_unique<ProjectExplorer::VirtualFolderNode>(parentFolder->filePath());
+    targetNode->setDisplayName(buildTarget.displayName);
+    targetNode->setIcon(BUILD_ICON);  // Make this appear differently, not like a normal directory.
 
     for (const QString& fileAbsPath : part.files) {
       auto fileNode = std::make_unique<ProjectExplorer::FileNode>(
         Utils::FilePath::fromString(fileAbsPath),
         ProjectExplorer::FileType::Source
       );
-      targetNode->addNode(std::move(fileNode));
+      // This will add intermediate folder nodes in case file is in a parentFolder's subdirectory.
+      targetNode->addNestedNode(std::move(fileNode));
     }  // for
 
     parentFolder->addNode(std::move(targetNode));
