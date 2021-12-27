@@ -67,6 +67,8 @@ private:
 
   QDir workspaceDir() const { return workspaceDirPath().toDir(); }
 
+  ProjectExplorer::RawProjectPart& stubPart() { return parts_[0]; }
+
   /// Recursively scans filesystem under the given project folder.
   ///
   /// This will collect the information about build targets and the code model as well as populate
@@ -96,7 +98,8 @@ private:
 void BazelProject::ProjectScanner::startAsync() {
   appTargets_.clear();
   knownSources_.clear();
-  parts_.clear();
+  // Start off with a part - it will collect files not belonging to any build target. See stubPart.
+  parts_ = ProjectExplorer::RawProjectParts{{}};
   rootNode_ = std::make_unique<ProjectExplorer::ProjectNode>(workspaceDirPath());
 
   Utils::runAsync(
@@ -157,18 +160,20 @@ void BazelProject::ProjectScanner::scanFolder(ProjectExplorer::FolderNode* folde
   }  // if (rootDir.exists(BAZEL_PACKAGE_BUILD_FILE_NAME))
 
   // List files not belonging to any build target.
-  // FIXME: These still need to belong to some RawProjectPart!
-  // TODO: Handle WORKSPACE files specially: mark as FileType::Project and add a custom icon.
   const auto& fileNames = rootDir.entryList(QDir::Files, QDir::Name);
   for (const auto& fileName : fileNames) {
     const auto fileAbsPath = folderNode->filePath().pathAppended(fileName);
     if (knownSources_.find(fileAbsPath) != knownSources_.cend()) {
       continue;  // Skip those belonging to some target.
     }
+    // TODO: Handle WORKSPACE files specially: mark as FileType::Project and add a custom icon.
     folderNode->addNode(std::make_unique<ProjectExplorer::FileNode>(
       fileAbsPath,
       ProjectExplorer::FileType::Unknown
     ));
+
+    // These still need to belong to some RawProjectPart!
+    stubPart().files.push_back(fileAbsPath.path());
   }
 
   // Process subdirectories in the same way.
