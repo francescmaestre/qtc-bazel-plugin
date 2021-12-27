@@ -23,7 +23,10 @@ namespace BazelProjectManager::Internal {
 
 namespace {
 
+// NOTE: WORKSPACE file name is declared in the plugin's JSON manifest file.
+
 const char BAZEL_PACKAGE_BUILD_FILE_NAME[] = "BUILD";
+const char BAZEL_PACKAGE_BUILD_FILE_NAME_W_EXT[] = "BUILD.bazel";
 
 }  // namespace BazelProjectManager::Internal
 
@@ -111,16 +114,23 @@ void BazelProject::ProjectScanner::startAsync() {
 void BazelProject::ProjectScanner::rescanProject(ProjectExplorer::FolderNode* rootNode) {
   QDir rootDir = rootNode->path();
 
-  if (rootDir.exists(BAZEL_PACKAGE_BUILD_FILE_NAME)) {  // This is a Bazel package root.
+  const auto maybeBuildFilePath = [&rootNode]() -> std::optional<Utils::FilePath> {
+    auto buildFilePath = rootNode->filePath().pathAppended(BAZEL_PACKAGE_BUILD_FILE_NAME);
+    if (buildFilePath.exists())
+      return std::move(buildFilePath);
+    buildFilePath = rootNode->filePath().pathAppended(BAZEL_PACKAGE_BUILD_FILE_NAME_W_EXT);
+    if (buildFilePath.exists())
+      return std::move(buildFilePath);
+    return std::nullopt;
+  }();
+  if (maybeBuildFilePath.has_value()) {  // This is a Bazel package root.
     // TODO: Add overlay icong to the current folder node.
-
-    const auto fileAbsPath = rootNode->filePath().pathAppended(BAZEL_PACKAGE_BUILD_FILE_NAME);
     // TODO: Add overlay icong to the BUILD file.
     rootNode->addNode(std::make_unique<ProjectExplorer::FileNode>(
-      fileAbsPath,
+      *maybeBuildFilePath,
       ProjectExplorer::FileType::Project
     ));
-    knownSources_.insert(fileAbsPath);
+    knownSources_.insert(*maybeBuildFilePath);
 
     const auto& packagePath = workspaceDir().relativeFilePath(rootDir.path());
     const auto& [exitCode, qr] = queryPackageRules(workspaceDirPath().toString(), packagePath);
