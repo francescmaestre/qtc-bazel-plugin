@@ -64,8 +64,12 @@ private:
 
   QDir workspaceDir() const { return workspaceDirPath().toDir(); }
 
-  void rescanProject(ProjectExplorer::FolderNode* rootNode);  // rebuildProjectStructure
-
+  /// Recursively scans filesystem under the given project folder.
+  ///
+  /// This will collect the information about build targets and the code model as well as populate
+  /// the folder with relevant child nodes.
+  /// @param folderNode - Project folder corresponding to a real FS directory.
+  void scanFolder(ProjectExplorer::FolderNode* folderNode);
 
   /// Create appropriate project nodes and code model info out of a Bazel rule item.
   ///
@@ -85,6 +89,7 @@ private:
   ProjectExplorer::RawProjectParts parts_;
 };  // class ProjectScanner
 
+
 void BazelProject::ProjectScanner::startAsync() {
   appTargets_.clear();
   knownSources_.clear();
@@ -95,7 +100,7 @@ void BazelProject::ProjectScanner::startAsync() {
   ProjectExplorer::ProjectExplorerPlugin::sharedThreadPool(),
   [this]() {
     try {
-      rescanProject(rootNode_.get());
+      scanFolder(rootNode_.get());
     }
     catch(const std::exception& e) {
       emit scanComplete(false);
@@ -111,14 +116,14 @@ void BazelProject::ProjectScanner::startAsync() {
   );
 }
 
-void BazelProject::ProjectScanner::rescanProject(ProjectExplorer::FolderNode* rootNode) {
-  QDir rootDir = rootNode->path();
+void BazelProject::ProjectScanner::scanFolder(ProjectExplorer::FolderNode* folderNode) {
+  QDir rootDir = folderNode->path();
 
-  const auto maybeBuildFilePath = [&rootNode]() -> std::optional<Utils::FilePath> {
-    auto buildFilePath = rootNode->filePath().pathAppended(BAZEL_PACKAGE_BUILD_FILE_NAME);
+  const auto maybeBuildFilePath = [&folderNode]() -> std::optional<Utils::FilePath> {
+    auto buildFilePath = folderNode->filePath().pathAppended(BAZEL_PACKAGE_BUILD_FILE_NAME);
     if (buildFilePath.exists())
       return std::move(buildFilePath);
-    buildFilePath = rootNode->filePath().pathAppended(BAZEL_PACKAGE_BUILD_FILE_NAME_W_EXT);
+    buildFilePath = folderNode->filePath().pathAppended(BAZEL_PACKAGE_BUILD_FILE_NAME_W_EXT);
     if (buildFilePath.exists())
       return std::move(buildFilePath);
     return std::nullopt;
@@ -126,7 +131,7 @@ void BazelProject::ProjectScanner::rescanProject(ProjectExplorer::FolderNode* ro
   if (maybeBuildFilePath.has_value()) {  // This is a Bazel package root.
     // TODO: Add overlay icong to the current folder node.
     // TODO: Add overlay icong to the BUILD file.
-    rootNode->addNode(std::make_unique<ProjectExplorer::FileNode>(
+    folderNode->addNode(std::make_unique<ProjectExplorer::FileNode>(
       *maybeBuildFilePath,
       ProjectExplorer::FileType::Project
     ));
@@ -144,7 +149,7 @@ void BazelProject::ProjectScanner::rescanProject(ProjectExplorer::FolderNode* ro
       if (bazelTarget.type() != blaze_query::Target_Discriminator_RULE) {
         continue;
       }
-      processBazelRule(bazelTarget.rule(), rootNode);
+      processBazelRule(bazelTarget.rule(), folderNode);
     }  // for
   }  // if (rootDir.exists(BAZEL_PACKAGE_BUILD_FILE_NAME))
 
@@ -152,11 +157,11 @@ void BazelProject::ProjectScanner::rescanProject(ProjectExplorer::FolderNode* ro
   // TODO: Handle WORKSPACE files specially: mark as FileType::Project and add a custom icon.
   const auto& fileNames = rootDir.entryList(QDir::Files, QDir::Name);
   for (const auto& fileName : fileNames) {
-    const auto fileAbsPath = rootNode->filePath().pathAppended(fileName);
+    const auto fileAbsPath = folderNode->filePath().pathAppended(fileName);
     if (knownSources_.find(fileAbsPath) != knownSources_.cend()) {
       continue;  // Skip those belonging to some target.
     }
-    rootNode->addNode(std::make_unique<ProjectExplorer::FileNode>(
+    folderNode->addNode(std::make_unique<ProjectExplorer::FileNode>(
       fileAbsPath,
       ProjectExplorer::FileType::Unknown
     ));
@@ -173,8 +178,8 @@ void BazelProject::ProjectScanner::rescanProject(ProjectExplorer::FolderNode* ro
       Utils::FilePath::fromString(rootDir.filePath(subdir))
     );
     subdirNode->setDisplayName(subdir);
-    rescanProject(subdirNode.get());
-    rootNode->addNode(std::move(subdirNode));
+    scanFolder(subdirNode.get());
+    folderNode->addNode(std::move(subdirNode));
   }
 }
 
