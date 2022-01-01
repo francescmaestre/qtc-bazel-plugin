@@ -12,8 +12,6 @@ class BazelProject;
 
 /// Serves as a bridge between the IDE and the build system.
 ///
-/// Populates the project explorer model with info about project sources and structure.
-/// Provides information about buildable, runnable, and deployable targets of the project.
 /// Translates back to the underlying build system various refactoring requests: file renaming, etc.
 /// There are 2 possible ways this can be instantiated:
 /// - by each `BuildConfiguration`;

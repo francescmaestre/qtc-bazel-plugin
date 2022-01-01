@@ -5,32 +5,27 @@
 #include <utils/qtcassert.h>
 
 #include "BazelBuildStep.h"
+#include "BazelCleanStep.h"
 #include "logging.h"
 #include "plugin_constants.h"
+
+
+namespace BazelProjectManager::Internal {
 
 namespace {
 const char BUILD_CONFIG_ID[] = "BazelProjectManager.BuildConfiguration";
 
-enum class CompileMode
-{
-  Fast,
-  Dbg,
-  Opt,
-
-  CompileMode_LAST
-};
-
-constexpr auto compileModeToInteger(const CompileMode m) {
-  return static_cast<std::underlying_type<CompileMode>::type>(m);
+constexpr auto compileModeToInteger(const BazelCompilationMode m) {
+  return static_cast<std::underlying_type<BazelCompilationMode>::type>(m);
 }
 
-void operator++(CompileMode& m)  // prefix form
+void operator++(BazelCompilationMode& m)  // prefix form
 {
   // Yeah, this is unsafe. Stop me! :-D
-  m = static_cast<CompileMode>(compileModeToInteger(m) + 1);
+  m = static_cast<BazelCompilationMode>(compileModeToInteger(m) + 1);
 }
 
-ProjectExplorer::BuildInfo createBuildInfo(CompileMode mode)
+ProjectExplorer::BuildInfo createBuildInfo(BazelCompilationMode mode)
 {
   using ProjectExplorer::BuildConfiguration;
 
@@ -38,17 +33,17 @@ ProjectExplorer::BuildInfo createBuildInfo(CompileMode mode)
   info.extraInfo = compileModeToInteger(mode);
 
   switch (mode) {
-    case CompileMode::Fast:
+    case BazelCompilationMode::Fast:
       info.typeName = "Fast";
       info.displayName = BuildConfiguration::tr("Fast");
       info.buildType = BuildConfiguration::Unknown;
       break;
-    case CompileMode::Dbg:
+    case BazelCompilationMode::Dbg:
       info.typeName = "Debug";
       info.displayName = BuildConfiguration::tr("Debug");
       info.buildType = BuildConfiguration::Debug;
       break;
-    case CompileMode::Opt:
+    case BazelCompilationMode::Opt:
       info.typeName = "Optimised";
       info.displayName = BuildConfiguration::tr("Optimised");
       info.buildType = BuildConfiguration::Release;
@@ -63,11 +58,25 @@ ProjectExplorer::BuildInfo createBuildInfo(CompileMode mode)
 
 }  // namespace
 
-namespace BazelProjectManager::Internal {
-
 BazelBuildConfiguration::BazelBuildConfiguration(ProjectExplorer::Target* target, Utils::Id id)
   : ProjectExplorer::BuildConfiguration(target, id) {
   appendInitialBuildStep(BazelBuildStep::STEP_ID);
+  appendInitialCleanStep(BazelCleanStep::STEP_ID);
+}
+
+BazelCompilationMode BazelBuildConfiguration::compileMode() const {
+  // Build steps are created BEFORE build configuration's initializer is run. So guessing from
+  // `buildType()` is the only way to provide this info to our build steps as they get created.
+
+  switch (buildType()) {
+    case ProjectExplorer::BuildConfiguration::Unknown:
+      return BazelCompilationMode::Fast;
+    case ProjectExplorer::BuildConfiguration::Debug:
+      return BazelCompilationMode::Dbg;
+    case ProjectExplorer::BuildConfiguration::Release:
+      return BazelCompilationMode::Opt;
+  }
+  return BazelCompilationMode::Fast;
 }
 
 ProjectExplorer::NamedWidget* BazelBuildConfiguration::createConfigWidget()
@@ -98,7 +107,7 @@ QList<ProjectExplorer::BuildInfo> BazelBuildConfigurationFactory::generateBuild(
   using ProjectExplorer::BuildInfo;
   QList<BuildInfo> result;
 
-  for (auto mode = CompileMode::Fast; mode != CompileMode::CompileMode_LAST; ++mode) {
+  for (auto mode = BazelCompilationMode::Fast; mode != BazelCompilationMode::CompileMode_LAST; ++mode) {
       BuildInfo info = createBuildInfo(mode);
       info.factory = this;
       info.kitId = kit->id();

@@ -1,10 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 
 project(BazelPlugin)
+enable_testing()
 
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
 set(CMAKE_CXX_STANDARD 17)
 
 # Add support for Conan to be able to find the dependencies managed by it.
@@ -15,13 +13,12 @@ find_package(QtCreator COMPONENTS Core REQUIRED)
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Widgets REQUIRED)
 set(QtX Qt${QT_VERSION_MAJOR})
 find_package(Protobuf REQUIRED)
-find_package(fmt REQUIRED)
 
 
+# Bazel's protobuf API library.
 set(proto_files
   3rd_party/bazel/src/main/protobuf/build.proto
 )
-
 protobuf_generate(
   OUT_VAR bazel_proto_srcs
   LANGUAGE cpp
@@ -35,7 +32,13 @@ add_library(
   bazel_helpers.cpp
   bazel_helpers.h
 )
-target_include_directories(bazel_api PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(
+  bazel_api
+
+  PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_BINARY_DIR}
+)
 target_link_libraries(
   bazel_api
   PUBLIC
@@ -43,11 +46,15 @@ target_link_libraries(
     ${QtX}::Core
 )
 
+
 # Just a POC tool to test Bazel's protobuf API
-add_executable(qb qb.cpp)
-target_link_libraries(qb PRIVATE bazel_api)
+if (NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+  add_executable(qb qb.cpp)
+  target_link_libraries(qb PRIVATE bazel_api)
+endif()
 
 
+# The plugin binary.
 add_qtc_plugin(
   BazelProjectManager
 
@@ -87,5 +94,28 @@ add_qtc_plugin(
 
     BazelBuildStep.cpp
     BazelBuildStep.h
+
+    BazelBuildStepConfigWidget.cpp
+    BazelBuildStepConfigWidget.h
+    BazelBuildStepConfigWidget.ui
+
+    BazelBuildTargetsModel.cpp
+    BazelBuildTargetsModel.h
+
+    BazelCleanStep.cpp
+    BazelCleanStep.h
+
+    build_step_factories.h
+    build_step_factories.cpp
+)
+set_target_properties(
+  BazelProjectManager
+
+  PROPERTIES
+  AUTOMOC ON
+  AUTORCC ON
+  AUTOUIC ON
 )
 target_link_libraries(BazelProjectManager PRIVATE bazel_api)
+
+add_subdirectory(tests)

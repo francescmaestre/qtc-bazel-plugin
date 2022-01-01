@@ -1,8 +1,9 @@
 #pragma once
 
 #include <set>
-#include <thread>
+#include <memory>
 #include <mutex>
+#include <thread>
 
 #include <projectexplorer/project.h>
 
@@ -17,7 +18,11 @@ class BuildTargetInfo;
 
 namespace BazelProjectManager::Internal {
 
-/// This class implements a Bazel project node in the project explorer.
+class BazelPackage;
+
+/// This class implements a Bazel project.
+/// Populates the project explorer model with info about project sources and structure.
+/// Provides information about buildable, runnable, and deployable targets of the project.
 class BazelProject final : public ProjectExplorer::Project {
 public:
   BazelProject(const Utils::FilePath &fileName);
@@ -29,9 +34,11 @@ public:
   /// Upon completion this will emit the `projectStructureReady` signal.
   void startProjectStructureUpdate();
 
-  /// @returns the list of known build targets.
+  /// @returns a flat list of known build targets as understood by the IDE.
   /// @sa `startProjectStructureUpdate`
   const QList<ProjectExplorer::BuildTargetInfo>& targets() const { return targets_; }
+
+  const std::shared_ptr<const BazelPackage> bazelTargets() const { return bazelPackage_; }
 
   // Project interface:
 
@@ -74,6 +81,9 @@ private:
 
   // A lightweight collection of buildable targets.
   QList<ProjectExplorer::BuildTargetInfo> targets_;
+
+  // A more detailed targets structure.
+  std::shared_ptr<BazelPackage> bazelPackage_;
 
   std::unique_ptr<CppTools::CppProjectUpdater> cppCodeModelUpdater_;
 };

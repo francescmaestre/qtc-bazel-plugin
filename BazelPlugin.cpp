@@ -11,8 +11,8 @@
 
 // Our stuff:
 #include "BazelBuildConfiguration.h"
-#include "BazelBuildStep.h"
 #include "BazelProject.h"
+#include "build_step_factories.h"
 #include "logging.h"
 #include "plugin_constants.h"
 
@@ -24,6 +24,7 @@ namespace BazelProjectManager::Internal {
 struct PluginGuts
 {
   BazelBuildStepFactory buildStepFactory;
+  BazelCleanStepFactory cleanStepFactory;
   BazelBuildConfigurationFactory buildConfigFactory;
 };
 

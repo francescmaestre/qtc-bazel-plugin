@@ -62,7 +62,7 @@ void BazelBuildSystem::onTargetsParsed(bool good) {
   }
   _parseGuard = {};
 
-  // FIXME: This should be important but the effect is currently unclear.
+  // TODO: This should be important but the effect is currently unclear.
   setApplicationTargets(bazelProject()->targets());
   emitBuildSystemUpdated();
 }

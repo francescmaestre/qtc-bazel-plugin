@@ -4,32 +4,26 @@
 #include <QFormLayout>
 
 // QtCreator:
+#include <projectexplorer/buildsteplist.h>
 #include <projectexplorer/target.h>
 #include <utils/commandline.h>
 #include <utils/filepath.h>
 
 // Own:
+#include "BazelProject.h"
+#include "BazelBuildConfiguration.h"
+#include "BazelBuildStepConfigWidget.h"
 #include "plugin_constants.h"
 
 namespace
 {
 const char CONFIG_KEY_TARGETS[] = "BazelProjectManager.BuildStep.Targets";
-const char CONFIG_KEY_CMD_ARGS[] = "BazelProjectManager.BuildStep.CmdArgs";
+const char CONFIG_KEY_CMD_FLAGS[] = "BazelProjectManager.BuildStep.CmdFlags";
 
 }  // namespace
 
 namespace BazelProjectManager::Internal
 {
-
-// -- BazelBuildStepFactory --
-
-BazelBuildStepFactory::BazelBuildStepFactory()
-{
-  registerStep<BazelBuildStep>(BazelBuildStep::STEP_ID);
-  setDisplayName(BazelBuildStep::tr("Bazel Build"));
-  setSupportedProjectType(Constants::Project::ID);
-}
-
 
 // -- BazelBuildStep --
 
@@ -38,9 +32,21 @@ const char BazelBuildStep::STEP_ID[] = "BazelProjectManager.BuildStep";
 BazelBuildStep::BazelBuildStep(ProjectExplorer::BuildStepList* bsl, Utils::Id id)
   : ProjectExplorer::AbstractProcessStep(bsl, id)
 {
+  const auto* const buildConfig = static_cast<BazelBuildConfiguration*>(this->buildConfiguration());
+  buildFlags_ = "--compilation_mode " + [buildConfig]() -> QString {
+    switch (buildConfig->compileMode()) {
+      case BazelCompilationMode::Fast: return "fastbuild";
+      case BazelCompilationMode::Dbg: return "dbg";
+      case BazelCompilationMode::Opt: return "opt";
+    }
+    return "fast";
+  }();
+
+  buildTargets_ << "//...:all";  // Build all by default.
+
   setLowPriority();
   setCommandLineProvider([this] { return params_.command(); });
-  setDisplayName(tr("Build Step:", "BazelBuildStep config widget display name."));
+  setDisplayName(tr("Build Step", "BazelBuildStep config widget display name."));
 
   // This should only be done after the display name is set, since the later is used for the step
   // summary which is also set inside.
@@ -49,34 +55,50 @@ BazelBuildStep::BazelBuildStep(ProjectExplorer::BuildStepList* bsl, Utils::Id id
 
 bool BazelBuildStep::fromMap(const QVariantMap& map)
 {
-  buildArgs_ = map.value(CONFIG_KEY_CMD_ARGS).toStringList();
-  return AbstractProcessStep::fromMap(map);
+  if (!AbstractProcessStep::fromMap(map))
+    return false;
+
+  buildFlags_ = map.value(CONFIG_KEY_CMD_FLAGS).toString();
+  buildTargets_ = map.value(CONFIG_KEY_TARGETS).toStringList();
+  updateCommandLine();
+
+  return true;
 }
 
 QVariantMap BazelBuildStep::toMap() const
 {
   QVariantMap map = AbstractProcessStep::toMap();
-  map.insert(CONFIG_KEY_CMD_ARGS, buildArgs_);
+  map.insert(CONFIG_KEY_CMD_FLAGS, buildFlags_);
+  map.insert(CONFIG_KEY_TARGETS, buildTargets_);
   return map;
 }
 
 QWidget* BazelBuildStep::createConfigWidget()
 {
-  auto widget = std::make_unique<QWidget>();
+  const auto* bazelProject = static_cast<BazelProject*>(target()->project());
 
-  auto formLayout = new QFormLayout(widget.get());
-  formLayout->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
-  formLayout->setContentsMargins(0, 0, 0, 0);
-
-  auto toolArgumentsEdit = std::make_unique<QLineEdit>(widget.get());
-  toolArgumentsEdit->setText(Utils::ProcessArgs::joinArgs(buildArgs_));
-  QLineEdit* const toolArgumentsEditPtr = toolArgumentsEdit.get();
-  formLayout->addRow(tr("Tool arguments:"), toolArgumentsEdit.release());
+  auto widget = std::make_unique<BazelBuildStepConfigWidget>();
+  widget->setProjectData(bazelProject->bazelTargets(), buildFlags_, buildTargets_);
 
   connect(
-    toolArgumentsEditPtr, &QLineEdit::editingFinished,
-    this, [this, toolArgumentsEditPtr]() {
-      buildArgsEdited(toolArgumentsEditPtr->text());
+    bazelProject, &BazelProject::projectScanComplete,
+    widget.get(), [this, bazelProject, widget = widget.get()] {
+      widget->setProjectData(bazelProject->bazelTargets(), buildFlags_, buildTargets_);
+    }
+  );
+
+  connect(
+    widget.get(), &BazelBuildStepConfigWidget::buildFlagsChanged,
+    this, [this](const QString& flags) {
+      buildFlags_ = flags;
+      updateCommandLine();
+    }
+  );
+  connect(
+    widget.get(), &BazelBuildStepConfigWidget::buildSelectionChanged,
+    this, [this, widget = widget.get()]() {
+      buildTargets_ = widget->buildExpressions();
+      updateCommandLine();
     }
   );
 
@@ -85,7 +107,7 @@ QWidget* BazelBuildStep::createConfigWidget()
 
 void BazelBuildStep::buildArgsEdited(const QString& args)
 {
-  buildArgs_ = Utils::ProcessArgs::splitArgs(args);
+  buildFlags_ = args;
   updateCommandLine();
 }
 
@@ -93,7 +115,8 @@ void BazelBuildStep::updateCommandLine()
 {
   Utils::CommandLine cmd{Utils::FilePath::fromString("bazel")};
   cmd.addArg("build");
-  cmd.addArgs(buildArgs_);
+  cmd.addArgs(buildFlags_, Utils::CommandLine::Raw);
+  cmd.addArgs(buildTargets_);
 
   params_.setCommandLine(std::move(cmd));
   setupProcessParameters(&params_);

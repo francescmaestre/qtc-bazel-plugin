@@ -1,7 +1,5 @@
 #pragma once
 
-#include <projectexplorer/buildstep.h>
-
 #include <projectexplorer/abstractprocessstep.h>
 #include <projectexplorer/processparameters.h>
 
@@ -11,20 +9,9 @@ namespace Utils
 class CommandLine;
 }
 
+namespace BazelProjectManager::Internal {
 
-namespace BazelProjectManager::Internal
-{
-
-/// Registers a build step type which invokes Bazel build.
-/// This step will become available on the IDE's project setup pane.
-class BazelBuildStepFactory final : public ProjectExplorer::BuildStepFactory
-{
-public:
-  BazelBuildStepFactory();
-};
-
-
-/// This implements the invokation of Bazel process to perform a build action on some target.
+/// This implements the invokation of Bazel process to perform the build action on some targets.
 class BazelBuildStep final : public ProjectExplorer::AbstractProcessStep
 {
 public:
@@ -45,9 +32,9 @@ public:
   /// like progress, errors, or paths to project files to turn those into "hyperlinks".
   // void setupOutputFormatter(Utils::OutputFormatter* formatter) override;
 
-  /// Create UI for extended build step configuration. This may provide things like target selection
-  /// or invokation options specific to the underlying build tool.
-  /// Ownership is transferred to the caller.
+  /// Create UI for extended build step configuration.
+  /// @returns the newly created UI widget. Ownership is transferred to the caller!
+  /// @see BazelBuildStepConfigWidget
   QWidget* createConfigWidget() override;
 
   static const char STEP_ID[];
@@ -55,18 +42,15 @@ public:
 private:
   Q_OBJECT
 
-  /// Prepares command line to execute bazel for this build step.
-  Utils::CommandLine bazelCommand() const;
-
   /// React to the build args text edit in the config widget being edited.
   void buildArgsEdited(const QString& args);
 
   /// Update resulting command line after changing the `buildArgs_`.
   void updateCommandLine();
 
-  QStringList buildArgs_ = {"//..."};  // Build all by default.
+  QString buildFlags_;
+  QStringList buildTargets_;
   ProjectExplorer::ProcessParameters params_;  // Holds the resulting command line.
 };  // class BazelBuildStep
-
 
 }  // namespace BazelProjectManager::Internal

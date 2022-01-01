@@ -2,9 +2,19 @@
 
 #include <memory>
 
+#include <projectexplorer/buildinfo.h>
 #include <projectexplorer/buildconfiguration.h>
 
 namespace BazelProjectManager::Internal {
+
+enum class BazelCompilationMode
+{
+  Fast,
+  Dbg,
+  Opt,
+
+  CompileMode_LAST
+};
 
 
 /// Manages build parameters and steps for a Bazel-bazed project.
@@ -12,6 +22,8 @@ class BazelBuildConfiguration final : public ProjectExplorer::BuildConfiguration
 public:
   /// Designated ctor. Called by the IDE to handle a project of the corresponding mime type.
   explicit BazelBuildConfiguration(ProjectExplorer::Target* target, Utils::Id id);
+
+  BazelCompilationMode compileMode() const;
 
   // BuildConfiguration interface
 
