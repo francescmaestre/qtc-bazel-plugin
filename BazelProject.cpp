@@ -22,6 +22,7 @@
 namespace BazelProjectManager::Internal {
 
 namespace {
+using namespace ProjectExplorer;
 
 // NOTE: WORKSPACE file name is declared in the plugin's JSON manifest file.
 
@@ -45,7 +46,7 @@ public:
 
   // Since there's only one possible caller of these, we just let take the ownership.
 
-  std::unique_ptr<ProjectExplorer::ProjectNode> takeRootNode() {
+  std::unique_ptr<ProjectNode> takeRootNode() {
     return std::exchange(rootNode_, {});
   }
 
@@ -53,12 +54,12 @@ public:
     return std::exchange(package_, {});
   }
 
-  QList<ProjectExplorer::BuildTargetInfo> takeTargets() {
+  QList<BuildTargetInfo> takeTargets() {
     return std::exchange(appTargets_, {});
   }
 
   /// RawProjectParts holds most of a project's C++ code model: inputs, targets, includes.
-  ProjectExplorer::RawProjectParts takeParts() {
+  RawProjectParts takeParts() {
     return std::exchange(parts_, {});
   }
 
@@ -70,7 +71,7 @@ private:
 
   QDir workspaceDir() const { return workspaceDirPath().toDir(); }
 
-  ProjectExplorer::RawProjectPart& stubPart() { return parts_[0]; }
+  RawProjectPart& stubPart() { return parts_[0]; }
 
   /// Recursively scans filesystem under the given project folder.
   ///
@@ -79,7 +80,7 @@ private:
   ///
   /// @param destPackage - container for the discovered targets and sub-packages.
   /// @param folderNode - Project folder corresponding to a real FS directory.
-  void scanFolder(ProjectExplorer::FolderNode* folderNode, BazelPackage* destPackage);
+  void scanFolder(FolderNode* folderNode, BazelPackage* destPackage);
 
   /// Create appropriate project nodes and code model info out of a Bazel rule item.
   ///
@@ -87,7 +88,7 @@ private:
   /// @param parentFolder [out] - project folder to append new target node to.
   void processBazelRule(
     const blaze_query::Rule& bazelRule,
-    ProjectExplorer::FolderNode* parentFolder,
+    FolderNode* parentFolder,
     BazelPackage* destPackage
   );
 
@@ -95,10 +96,10 @@ private:
   Utils::FilePath projectFilePath_;
 
   std::set<Utils::FilePath> knownSources_;
-  std::unique_ptr<ProjectExplorer::ProjectNode> rootNode_;
+  std::unique_ptr<ProjectNode> rootNode_;
   std::unique_ptr<BazelPackage> package_;
-  QList<ProjectExplorer::BuildTargetInfo> appTargets_;
-  ProjectExplorer::RawProjectParts parts_;
+  QList<BuildTargetInfo> appTargets_;
+  RawProjectParts parts_;
 };  // class ProjectScanner
 
 
@@ -107,11 +108,11 @@ void BazelProject::ProjectScanner::startAsync() {
   package_ = std::make_unique<BazelPackage>();
   knownSources_.clear();
   // Start off with a part - it will collect files not belonging to any build target. See stubPart.
-  parts_ = ProjectExplorer::RawProjectParts{{}};
-  rootNode_ = std::make_unique<ProjectExplorer::ProjectNode>(workspaceDirPath());
+  parts_ = RawProjectParts{{}};
+  rootNode_ = std::make_unique<ProjectNode>(workspaceDirPath());
 
   Utils::runAsync(
-    ProjectExplorer::ProjectExplorerPlugin::sharedThreadPool(),
+    ProjectExplorerPlugin::sharedThreadPool(),
     [this]() {
       try {
         scanFolder(rootNode_.get(), package_.get());
@@ -131,7 +132,7 @@ void BazelProject::ProjectScanner::startAsync() {
 }
 
 void BazelProject::ProjectScanner::scanFolder(
-  ProjectExplorer::FolderNode* folderNode,
+  FolderNode* folderNode,
   BazelPackage* destPackage
 ) {
   QDir rootDir = folderNode->path();
@@ -149,9 +150,9 @@ void BazelProject::ProjectScanner::scanFolder(
     // TODO: Add overlay icong to the folderNode.
     // TODO: Add overlay icong to the BUILD file.
     // Add the BUILD file to the prooject explorer tree.
-    folderNode->addNode(std::make_unique<ProjectExplorer::FileNode>(
+    folderNode->addNode(std::make_unique<FileNode>(
       *maybeBuildFilePath,
-      ProjectExplorer::FileType::Project
+      FileType::Project
     ));
     knownSources_.insert(*maybeBuildFilePath);
 
@@ -179,9 +180,9 @@ void BazelProject::ProjectScanner::scanFolder(
       continue;  // Skip those belonging to some target.
     }
     // TODO: Handle WORKSPACE files specially: mark as FileType::Project and add a custom icon.
-    folderNode->addNode(std::make_unique<ProjectExplorer::FileNode>(
+    folderNode->addNode(std::make_unique<FileNode>(
       fileAbsPath,
-      ProjectExplorer::FileType::Unknown
+      FileType::Unknown
     ));
 
     // These still need to belong to some RawProjectPart!
@@ -195,7 +196,7 @@ void BazelProject::ProjectScanner::scanFolder(
     if (subdir.startsWith("bazel-")) {
       continue;  // This is one of Bazel's own build dirs. We don't want to go in there.
     }
-    auto subdirNode = std::make_unique<ProjectExplorer::FolderNode>(
+    auto subdirNode = std::make_unique<FolderNode>(
       Utils::FilePath::fromString(rootDir.filePath(subdir))
     );
     subdirNode->setDisplayName(subdir);
@@ -214,13 +215,13 @@ void BazelProject::ProjectScanner::scanFolder(
 
 void BazelProject::ProjectScanner::processBazelRule(
   const blaze_query::Rule& bazelRule,
-  ProjectExplorer::FolderNode* parentFolder,
+  FolderNode* parentFolder,
   BazelPackage* destPackage
 ) {
 
   // Collect code model info.
   {
-    ProjectExplorer::RawProjectPart part;
+    RawProjectPart part;
 
     const auto& locationComponents = QString::fromStdString(bazelRule.location()).split(":");
     part.setProjectFileLocation(
@@ -250,7 +251,8 @@ void BazelProject::ProjectScanner::processBazelRule(
         continue;  // TODO: Or can there also be source files from external repos?
       }
 
-      const QString packageDirPath = QString::fromStdString(maybeParsedLabel->packageDirPath().str());
+      const QString packageDirPath =
+        QString::fromStdString(maybeParsedLabel->packageDirPath().str());
       const QString relFilePath = QString::fromStdString(maybeParsedLabel->targetPath().str());
 
       const Utils::FilePath absFilePath = workspaceDirPath()/packageDirPath/relFilePath;
@@ -264,36 +266,38 @@ void BazelProject::ProjectScanner::processBazelRule(
 
     parts_.push_back(std::move(part));
   }
-  const ProjectExplorer::RawProjectPart& part = parts_.back();
+  const RawProjectPart& part = parts_.back();
 
   // Prepare build target description.
   {
-    ProjectExplorer::BuildTargetInfo targetInfo{};
+    BuildTargetInfo targetInfo{};
     targetInfo.buildKey = part.buildSystemTarget;
     targetInfo.displayName = part.displayName;
     targetInfo.projectFilePath = Utils::FilePath::fromString(part.projectFile);
     targetInfo.workingDirectory = parentFolder->filePath();
     if (bazelRule.rule_output_size()) {
       const auto& path = bazelRule.rule_output(0);
+      // FIXME: Results in //main:hello-world.stripped
       targetInfo.targetFilePath = Utils::FilePath::fromUtf8(path.data(), path.size());
     }
+    targetInfo.isQtcRunnable = part.buildTargetType == BuildTargetType::Executable;
     appTargets_.push_back(std::move(targetInfo));
 
     destPackage->targets.push_back(part.displayName);
   }
-  const ProjectExplorer::BuildTargetInfo& buildTarget = appTargets_.back();
+  const BuildTargetInfo& buildTarget = appTargets_.back();
 
   // Create explorer tree nonde.
   {
     auto targetNode =
-      std::make_unique<ProjectExplorer::VirtualFolderNode>(parentFolder->filePath());
+      std::make_unique<VirtualFolderNode>(parentFolder->filePath());
     targetNode->setDisplayName(buildTarget.displayName);
     targetNode->setIcon(BUILD_ICON);  // Make this appear differently, not like a normal directory.
 
     for (const QString& fileAbsPath : part.files) {
-      auto fileNode = std::make_unique<ProjectExplorer::FileNode>(
+      auto fileNode = std::make_unique<FileNode>(
         Utils::FilePath::fromString(fileAbsPath),
-        ProjectExplorer::FileType::Source
+        FileType::Source
       );
       // This will add intermediate folder nodes in case file is in a parentFolder's subdirectory.
       targetNode->addNestedNode(std::move(fileNode));
@@ -307,7 +311,7 @@ void BazelProject::ProjectScanner::processBazelRule(
 // --- BazelProject public ---
 
 BazelProject::BazelProject(const Utils::FilePath& fileName)
-: ProjectExplorer::Project(Constants::Project::MIMETYPE, fileName),
+: Project(Constants::Project::MIMETYPE, fileName),
 cppCodeModelUpdater_{std::make_unique<CppTools::CppProjectUpdater>()}
 {
   scanner_ = std::make_unique<ProjectScanner>(projectFilePath());
@@ -325,7 +329,7 @@ cppCodeModelUpdater_{std::make_unique<CppTools::CppProjectUpdater>()}
   setNeedsDeployConfigurations(false);
   setHasMakeInstallEquivalent(false);
   setCanBuildProducts();
-  setBuildSystemCreator([](ProjectExplorer::Target* t) {
+  setBuildSystemCreator([](Target* t) {
     // Yes, the IDE assumes ownership. See `~TargetPrivate` in projectexplorer/target.cpp.
     return new BazelBuildSystem(t);
   });
@@ -333,9 +337,9 @@ cppCodeModelUpdater_{std::make_unique<CppTools::CppProjectUpdater>()}
   startProjectStructureUpdate();
 }
 
-ProjectExplorer::DeploymentKnowledge BazelProject::deploymentKnowledge() const
+DeploymentKnowledge BazelProject::deploymentKnowledge() const
 {
-  return ProjectExplorer::DeploymentKnowledge::Bad;
+  return DeploymentKnowledge::Bad;
 }
 
 // --- BazelProject private ---
@@ -363,9 +367,9 @@ void BazelProject::onScanComplete(bool good) {
 
   // Update C++ code model.
   cppCodeModelUpdater_->update(
-    ProjectExplorer::ProjectUpdateInfo{
+    ProjectUpdateInfo{
       this,
-      ProjectExplorer::KitInfo{activeTarget()->kit()},  // TODO: What if the active Target changes?
+      KitInfo{activeTarget()->kit()},  // TODO: What if the active Target changes?
       activeTarget()->activeBuildConfiguration()->environment(),
       scanner_->takeParts()
     }
