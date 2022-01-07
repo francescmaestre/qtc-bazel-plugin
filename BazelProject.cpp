@@ -30,7 +30,33 @@ const char BAZEL_PACKAGE_BUILD_FILE_NAME[] = "BUILD";
 const char BAZEL_PACKAGE_BUILD_FILE_NAME_W_EXT[] = "BUILD.bazel";
 const char BUILD_ICON[] = ":/projectexplorer/images/build.png";
 
+/// Contains references to interesting attributes of Bazel rules.
+/// WARNING: This struct is NON-OWNING and stores mostly just references!
+struct RuleAttributeRefs {
+private:
+  using StringValueListType = std::remove_reference_t<
+    decltype(std::declval<blaze_query::Attribute>().string_list_value())
+  >;
+
+public:
+  RuleAttributeRefs(const blaze_query::Rule& rule);
+
+  bool is_executable = false;
+};
+
+RuleAttributeRefs::RuleAttributeRefs(const blaze_query::Rule& rule) {
+  for (int i = 0; i < rule.attribute_size(); i++) {
+    const blaze_query::Attribute& attr = rule.attribute(i);
+
+    if (attr.name() == "$is_executable") {
+      is_executable = attr.has_boolean_value() && attr.boolean_value();
+      continue;
+    }
+  }  // for
+}
+
 }  // namespace
+
 
 // --- ProjectScanner ---
 
@@ -175,7 +201,7 @@ void BazelProject::ProjectScanner::scanFolder(
   // List files not belonging to any build target.
   const auto& fileNames = rootDir.entryList(QDir::Files, QDir::Name);
   for (const auto& fileName : fileNames) {
-    const auto fileAbsPath = folderNode->filePath().pathAppended(fileName);
+    const auto fileAbsPath = folderNode->filePath().pathAppended(fileName);  // FIXME: Crashing somewhere inside. folderNode rug-pulled?
     if (knownSources_.find(fileAbsPath) != knownSources_.cend()) {
       continue;  // Skip those belonging to some target.
     }
@@ -218,7 +244,9 @@ void BazelProject::ProjectScanner::processBazelRule(
   FolderNode* parentFolder,
   BazelPackage* destPackage
 ) {
+   const RuleAttributeRefs attrRefs{bazelRule};
 
+  // TODO: This part needs a unit-test!
   // Collect code model info.
   {
     RawProjectPart part;
@@ -231,8 +259,10 @@ void BazelProject::ProjectScanner::processBazelRule(
     );
     part.buildSystemTarget = QString::fromStdString(bazelRule.name());
     part.displayName = part.buildSystemTarget.split(":").back();  // Un-qualified target name.
+    part.buildTargetType = attrRefs.is_executable
+      ? ProjectExplorer::BuildTargetType::Executable
+      : ProjectExplorer::BuildTargetType::Unknown;  // TODO: Would be nice to distinguish libraries.
 
-    // TODO: part.buildTargetType = ...
     // TODO: part.headerPaths = ...
     // TODO: part.projectMacros = ...
     // TODO: part.flagsForC = ...
@@ -274,13 +304,30 @@ void BazelProject::ProjectScanner::processBazelRule(
     targetInfo.buildKey = part.buildSystemTarget;
     targetInfo.displayName = part.displayName;
     targetInfo.projectFilePath = Utils::FilePath::fromString(part.projectFile);
-    targetInfo.workingDirectory = parentFolder->filePath();
-    if (bazelRule.rule_output_size()) {
-      const auto& path = bazelRule.rule_output(0);
-      // FIXME: Results in //main:hello-world.stripped
-      targetInfo.targetFilePath = Utils::FilePath::fromUtf8(path.data(), path.size());
-    }
+    // Runnable targets shall be picked up by the IDE and presented in the run menu for selection.
     targetInfo.isQtcRunnable = part.buildTargetType == BuildTargetType::Executable;
+    if (bazelRule.rule_output_size()) {
+      const auto& outputLabel = bazelRule.rule_output(0);  // We hope this is always the executable.
+      auto maybeParsedLabel = BazelLabel::parse(outputLabel);
+      if (!maybeParsedLabel) {
+        qCWarning(BazelPluginLog) << "Unrecognized target output: " << outputLabel.c_str();
+      }
+      else {
+        // FIXME: This changes depending on the Bazel compilation mode (or, in our terms, the build
+        // configuration type) and has to either be updated whenever the IDE switches between build
+        // configurations, or the project model has to be kept in multiple instances - again, per
+        // build configuration instance.
+        targetInfo.targetFilePath =
+          workspaceDirPath()
+          .pathAppended("bazel-bin")
+          .pathAppended(QString::fromStdString(maybeParsedLabel->packageDirPath().str()))
+          .pathAppended(QString::fromStdString(maybeParsedLabel->targetPath().str()));
+      }
+    }
+    if (targetInfo.isQtcRunnable && !targetInfo.targetFilePath.isEmpty()) {
+      targetInfo.workingDirectory = parentFolder->filePath();
+    }
+
     appTargets_.push_back(std::move(targetInfo));
 
     destPackage->targets.push_back(part.displayName);

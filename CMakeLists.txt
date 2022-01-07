@@ -105,8 +105,8 @@ add_qtc_plugin(
     BazelCleanStep.cpp
     BazelCleanStep.h
 
-    build_step_factories.h
-    build_step_factories.cpp
+    BazelRunConfiguration.cpp
+    BazelRunConfiguration.h
 )
 set_target_properties(
   BazelProjectManager

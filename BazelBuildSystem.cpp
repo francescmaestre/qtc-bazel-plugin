@@ -62,7 +62,8 @@ void BazelBuildSystem::onTargetsParsed(bool good) {
   }
   _parseGuard = {};
 
-  // TODO: This should be important but the effect is currently unclear.
+  // This makes the build targets available for selection to create run configurations.
+  // TODO: It may make sense to prefilter to only runnable targets - e.g. remove DLLs and so on.
   setApplicationTargets(bazelProject()->targets());
   emitBuildSystemUpdated();
 }
