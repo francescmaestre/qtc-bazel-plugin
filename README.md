@@ -4,6 +4,14 @@
 
 This plugin adds Bazel project management support to QtCreator.
 
+## Features
+
+- Project navigation with sources grouping by build target;
+- C++ code model;
+- Build configurations supporting Bazel's "compilation modes";
+- Advanced selection of build targets: individual targets, entire packages, or packages recursively;
+- Running executables;
+
 ## How to Build
 
 ### Dependencies
@@ -11,7 +19,7 @@ This plugin adds Bazel project management support to QtCreator.
 - Install Conan package manager
 - Fetch external source code as shown below:
 
-```(bash)
+```sh
 git -C 3rd_party/bazel config core.sparseCheckout true
 cp 3rd_party/bazel_sparse-checkout.txt .git/modules/3rd_party/bazel/info/sparse-checkout
 git submodule update --force --checkout 3rd_party/bazel
@@ -20,7 +28,7 @@ git submodule update --force --checkout 3rd_party/bazel
 ### Configure and start the build
 Create a build directory and run
 
-```(bash)
+```sh
 conan install <path_to_plugin_source>
 cmake \
   -D CMAKE_PREFIX_PATH=<path_to_qt_sdk>;<path_to_qtcreator_sdk> \
@@ -46,7 +54,7 @@ When setting up a build in QtCreator you can use this to let the IDE put actual 
 - Qt Creator's CMake target helpers are shit and don't regenerate the plugin metadata JSON when
   the template file changes. So run CMake manually to update it!
 
-## How to Run
+## How to Use
 
 Run a compatible Qt Creator with the additional command line argument
 
