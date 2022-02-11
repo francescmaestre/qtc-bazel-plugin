@@ -1,4 +1,4 @@
-find_package(catch2 3 REQUIRED)
+find_package(Catch2 2.13 REQUIRED)
 
 
 add_executable(
