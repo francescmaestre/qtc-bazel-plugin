@@ -33,6 +33,10 @@ void BazelBuildSystem::construct() {
   }
 }
 
+QString BazelBuildSystem::name() const {
+  return "BazelBuildSystem";
+}
+
 void BazelBuildSystem::triggerParsing() {
 
   if (_parseGuard.guardsProject())

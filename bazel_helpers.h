@@ -55,7 +55,7 @@ struct BazelPackage {
   /// @returns whether this package is covered by the wildcard `path` and is a child of `path`.
   /// E.g. //foo/bar is under //...
   /// But //foo is not under //foo/... - it's the wildcard parent itself.
-  bool isConsumedBy(const QString& path) const;
+  bool isConsumedBy(const QStringView path) const;
 
   QString name;
   const BazelPackage* parentPackage = nullptr;

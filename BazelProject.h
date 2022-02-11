@@ -8,7 +8,7 @@
 #include <projectexplorer/project.h>
 
 
-namespace CppTools {
+namespace CppEditor {
 class CppProjectUpdater;
 }
 
@@ -26,6 +26,7 @@ class BazelPackage;
 class BazelProject final : public ProjectExplorer::Project {
 public:
   BazelProject(const Utils::FilePath &fileName);
+  ~BazelProject() override;
 
   /// @returns whether at least one successfull project scan has been complete.
   bool projectScanned() const { return goodScanAtLeastOnce_; }
@@ -85,7 +86,7 @@ private:
   // A more detailed targets structure.
   std::shared_ptr<BazelPackage> bazelPackage_;
 
-  std::unique_ptr<CppTools::CppProjectUpdater> cppCodeModelUpdater_;
+  std::unique_ptr<CppEditor::CppProjectUpdater> cppCodeModelUpdater_;
 };
 
 }  // namespace BazelProjectManager::Internal

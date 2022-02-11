@@ -10,7 +10,7 @@ include(${CMAKE_BINARY_DIR}/conan_paths.cmake)
 
 # Discover dependencies.
 find_package(QtCreator COMPONENTS Core REQUIRED)
-find_package(QT NAMES Qt6 Qt5 COMPONENTS Widgets REQUIRED)
+find_package(QT NAMES Qt6 COMPONENTS Widgets REQUIRED)
 set(QtX Qt${QT_VERSION_MAJOR})
 find_package(Protobuf REQUIRED)
 
@@ -60,7 +60,7 @@ add_qtc_plugin(
 
   PLUGIN_DEPENDS
     QtCreator::Core
-    QtCreator::CppTools
+    QtCreator::CppEditor
     QtCreator::ProjectExplorer
 
   DEPENDS

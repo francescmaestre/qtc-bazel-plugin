@@ -1,7 +1,7 @@
 #include "BazelProject.h"
 
 #include <coreplugin/icontext.h>
-#include <cpptools/cppprojectupdater.h>
+#include <cppeditor/cppprojectupdater.h>
 #include <projectexplorer/buildconfiguration.h>
 #include <projectexplorer/buildtargetinfo.h>
 #include <projectexplorer/projectexplorer.h>
@@ -161,7 +161,8 @@ void BazelProject::ProjectScanner::scanFolder(
   FolderNode* folderNode,
   BazelPackage* destPackage
 ) {
-  QDir rootDir = folderNode->path();
+  #warning "FilePath::toDir is marked as deprecated!"
+  const QDir& rootDir = folderNode->path().toDir();
 
   const auto maybeBuildFilePath = [&folderNode]() -> std::optional<Utils::FilePath> {
     auto buildFilePath = folderNode->filePath().pathAppended(BAZEL_PACKAGE_BUILD_FILE_NAME);
@@ -360,7 +361,7 @@ void BazelProject::ProjectScanner::processBazelRule(
 
 BazelProject::BazelProject(const Utils::FilePath& fileName)
 : Project(Constants::Project::MIMETYPE, fileName),
-cppCodeModelUpdater_{std::make_unique<CppTools::CppProjectUpdater>()}
+cppCodeModelUpdater_{std::make_unique<CppEditor::CppProjectUpdater>()}
 {
   scanner_ = std::make_unique<ProjectScanner>(projectFilePath());
   connect(scanner_.get(), &ProjectScanner::scanComplete, this, &BazelProject::onScanComplete);
@@ -377,13 +378,16 @@ cppCodeModelUpdater_{std::make_unique<CppTools::CppProjectUpdater>()}
   setNeedsDeployConfigurations(false);
   setHasMakeInstallEquivalent(false);
   setCanBuildProducts();
-  setBuildSystemCreator([](Target* t) {
+  setBuildSystemCreator([](Target* t) -> BuildSystem* {
     // Yes, the IDE assumes ownership. See `~TargetPrivate` in projectexplorer/target.cpp.
     return new BazelBuildSystem(t);
   });
 
   startProjectStructureUpdate();
 }
+
+// Avoid errors from std::unique_ptr<> around forward declared ProjectScanner (incomplete type).
+BazelProject::~BazelProject() = default;
 
 DeploymentKnowledge BazelProject::deploymentKnowledge() const
 {

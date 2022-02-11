@@ -46,13 +46,15 @@ BazelPackage BazelPackage::subPackage(QString subPackageName) const {
   return BazelPackage{std::move(subPackageName), this, {}, {}};
 }
 
-bool BazelPackage::isConsumedBy(const QString& path) const {
-  static const QString subdirWildcard = "/...";
-  if (!path.endsWith(subdirWildcard))
+bool BazelPackage::isConsumedBy(const QStringView path) const {
+  static const QString subdirWildcardExpr = "/...";
+  static const QString rootPackageExpr = "//";
+
+  if (!path.endsWith(subdirWildcardExpr))
     return false;
 
-  const auto& wildcardParentPath = path.leftRef(path.length() - 3);
-  const auto& selfPath = wildcardParentPath.startsWith("//") ? bazelPath() : dirPath();
+  const auto& wildcardParentPath = path.left(path.length() - 3);
+  const auto& selfPath = wildcardParentPath.startsWith(rootPackageExpr) ? bazelPath() : dirPath();
   return selfPath.startsWith(wildcardParentPath) && selfPath.length() > wildcardParentPath.length();
 }
 
