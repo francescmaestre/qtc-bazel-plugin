@@ -47,10 +47,10 @@ ProjectExplorer::BuildInfo createBuildInfo(BazelCompilationMode mode)
       info.typeName = "Optimised";
       info.displayName = BuildConfiguration::tr("Optimised");
       info.buildType = BuildConfiguration::Release;
-        break;
+      break;
     default:
-        QTC_CHECK(false);
-        break;
+      QTC_CHECK(false);
+      break;
   }
 
   return info;
