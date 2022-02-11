@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 project(BazelPlugin)
 enable_testing()
 
-set(CMAKE_CXX_STANDARD 17)
+include(compiler.cmake)
 
 # Add support for Conan to be able to find the dependencies managed by it.
 include(${CMAKE_BINARY_DIR}/conan_paths.cmake)
