@@ -3,14 +3,14 @@ cmake_minimum_required(VERSION 3.10)
 project(BazelPlugin)
 enable_testing()
 
-set(CMAKE_CXX_STANDARD 17)
+include(compiler.cmake)
 
 # Add support for Conan to be able to find the dependencies managed by it.
 include(${CMAKE_BINARY_DIR}/conan_paths.cmake)
 
 # Discover dependencies.
 find_package(QtCreator COMPONENTS Core REQUIRED)
-find_package(QT NAMES Qt6 Qt5 COMPONENTS Widgets REQUIRED)
+find_package(QT NAMES Qt6 COMPONENTS Widgets REQUIRED)
 set(QtX Qt${QT_VERSION_MAJOR})
 find_package(Protobuf REQUIRED)
 
@@ -60,7 +60,7 @@ add_qtc_plugin(
 
   PLUGIN_DEPENDS
     QtCreator::Core
-    QtCreator::CppTools
+    QtCreator::CppEditor
     QtCreator::ProjectExplorer
 
   DEPENDS

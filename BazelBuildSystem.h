@@ -27,6 +27,8 @@ public:
 
   // BuildSystem interface
 
+  QString name() const override;
+
   /// Initiate project parsing.
   ///
   /// Although being part of the public interface, this method doesn't seem to be called by anyone

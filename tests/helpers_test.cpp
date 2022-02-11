@@ -11,8 +11,8 @@ TEST_CASE() {
 
   REQUIRE(root.dirPath() == "/");
   REQUIRE(root.bazelPath() == "//");
-  REQUIRE_FALSE(root.isConsumedBy("/..."));
-  REQUIRE_FALSE(root.isConsumedBy("//..."));
+  REQUIRE_FALSE(root.isConsumedBy(QString{"/..."}));
+  REQUIRE_FALSE(root.isConsumedBy(QString{"//..."}));
 
   root.subPackages.push_back(
     std::make_shared<BazelPackage>(
@@ -28,8 +28,8 @@ TEST_CASE() {
   REQUIRE(p1->dirPath() == "/p1");
   REQUIRE(p1->bazelPath() == "//p1");
 
-  REQUIRE(p1->isConsumedBy("//..."));
-  REQUIRE_FALSE(p1->isConsumedBy("//p1/..."));
+  REQUIRE(p1->isConsumedBy(QString{"//..."}));
+  REQUIRE_FALSE(p1->isConsumedBy(QString{"//p1/..."}));
 }
 
 }  // namespace BazelProjectManager::Internal

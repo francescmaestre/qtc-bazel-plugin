@@ -1,7 +1,7 @@
 #pragma once
 
+#include <projectexplorer/buildinfo.h>
 #include <projectexplorer/projectimporter.h>
-
 
 namespace BazelProjectManager::Internal {
 
