@@ -28,14 +28,14 @@ BazelBuildStepConfigWidget::BazelBuildStepConfigWidget(QWidget* parent)
 }
 
 void BazelBuildStepConfigWidget::setProjectData(
-  std::shared_ptr<const BazelPackage> projectData,
+  const BazelWorkspace* projectWorkspace,
   const QString& buildFlags,
   const QStringList& initialBuildExpressions
 ) {
   ui_->extraArgsLineEdit->setText(buildFlags);
 
   auto* const model = static_cast<BazelBuildTargetsModel*>(model_.get());
-  model->setProjectData(projectData, initialBuildExpressions);
+  model->setProjectData(projectWorkspace, initialBuildExpressions);
 
   if (!model->invisibleRootItem()->hasChildren())
     return;

@@ -3,13 +3,19 @@
 // std
 #include <optional>
 #include <regex>
+#include <string>
+#include <string_view>
 #include <tuple>
 
 // Qt
 #include <QString>
+#include <QFileInfo>
 
 // Bazel
 #include <3rd_party/bazel/src/main/protobuf/build.pb.h>
+
+// own
+#include <bazel_api_export.h>
 
 
 namespace BazelProjectManager::Internal {
@@ -17,12 +23,25 @@ namespace BazelProjectManager::Internal {
 /// Helps to parse Bazel label strings into components.
 /// NB: This class makes no data copies and only returns references to the original string!
 /// This means the source data must outlive instances of this class.
-struct BazelLabel {
+struct BAZEL_API_EXPORT BazelLabel {
   static std::optional<BazelLabel> parse(const std::string& label);
 
-  std::ssub_match repo() const { return matchResults_[1]; }
-  std::ssub_match packageDirPath() const { return matchResults_[2]; }
-  std::ssub_match targetPath() const { return matchResults_[4]; }
+  /// Repository spec. Starts with '@'!
+  std::string_view repo() const;
+  QByteArrayView repoBA() const;
+
+  /// Path from the workspace root to the package directory. Starts with '/'.
+  std::string_view packageDirPath() const;
+  QByteArrayView packageDirPathBA() const;
+
+  /// Target's immediate parent directory name. Starts with '/'.
+  std::string_view targetParentDirName() const;
+  QByteArrayView targetParentDirNameBA() const;
+
+  /// Target unqualified name.
+  /// NOTE: May contain '/' inside!
+  std::string_view targetName() const;
+  QByteArrayView targetNameBA() const;
 
 private:
   explicit BazelLabel(std::smatch matchResults);
@@ -31,45 +50,18 @@ private:
 };
 
 
-/// Models a Bazel project's structure in terms of packages and their build targets.
-/// This is the simplest form needed to display e.g. a build step configuration UI.
-struct BazelPackage {
-  // Since children hold pointers to their parents we don't want the later to ever change their
-  // addresses due to vector reallocation.
-  using ChildrenContainerType = std::vector<std::shared_ptr<BazelPackage>>;
+/// Contains references to interesting attributes of Bazel rules.
+/// WARNING: This struct is NON-OWNING and stores mostly just references!
+struct BAZEL_API_EXPORT RuleAttributeRefs {
+private:
+  using StringValueListType = std::remove_reference_t<
+    decltype(std::declval<blaze_query::Attribute>().string_list_value())
+  >;
 
-  using TargetsContainerType = std::vector<QString>;
+public:
+  RuleAttributeRefs(const blaze_query::Rule& rule);
 
-  BazelPackage();
-
-  BazelPackage(
-    QString name,
-    const BazelPackage* parentPackage,
-    ChildrenContainerType subPackages,
-    TargetsContainerType targets
-  );
-
-  BazelPackage subPackage(QString subPackageName) const;
-
-  /// @param path - bazel label (starting with `//`) or a directory path (starting with `/`).
-  /// @returns whether this package is covered by the wildcard `path` and is a child of `path`.
-  /// E.g. //foo/bar is under //...
-  /// But //foo is not under //foo/... - it's the wildcard parent itself.
-  bool isConsumedBy(const QStringView path) const;
-
-  QString name;
-  const BazelPackage* parentPackage = nullptr;
-  ChildrenContainerType subPackages;
-  TargetsContainerType targets;
-
-  /// @returns package directory path, starting with "/".
-  QString dirPath() const;
-
-  /// @returns Bazel package path, starting with "//".
-  QString bazelPath() const;
-
-  /// @returns Bazel target label.
-  QString targetLabel(const QString& targetPath) const;
+  bool is_executable = false;
 };
 
 
@@ -78,7 +70,7 @@ struct BazelPackage {
 /// @param workspaceDir - Directory containing the Bazel workspace to query.
 /// @param query - Query string to execute.
 /// @see https://docs.bazel.build/versions/main/user-manual.html#query
-std::tuple<int, blaze_query::QueryResult> bazelQuery(
+blaze_query::QueryResult bazelQuery(
   const QString& workspaceDir, const QString& query
 );
 
@@ -87,7 +79,7 @@ std::tuple<int, blaze_query::QueryResult> bazelQuery(
 ///
 /// @param workspaceDir - Directory containing the Bazel workspace to query.
 /// @param packageDirPath - path, without the leading `//`, to the package to get the rules from.
-std::tuple<int, blaze_query::QueryResult> queryPackageRules(
+blaze_query::QueryResult queryPackageRules(
   const QString& workspaceDir, const QString& packageDirPath
 );
 

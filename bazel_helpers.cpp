@@ -1,17 +1,42 @@
 #include "bazel_helpers.h"
 
+// std
 #include <memory>
 
+// Qt
+#include <QDir>
 #include <QProcess>
 
 
 namespace BazelProjectManager::Internal {
 
+namespace {
+std::string_view regexMatchToStringView(const std::ssub_match& match) {
+  return std::string_view{
+    match.first.base(),
+    static_cast<std::string_view::size_type>(match.length())
+  };
+}
+
+QByteArrayView regexMatchToByteArrayView(const std::ssub_match& match) {
+  return QByteArrayView{
+    match.first.base(),
+    static_cast<qsizetype>(match.length())
+  };
+}
+
+}  // namespace
+
 // --- BazelLabel ---
 
 std::optional<BazelLabel> BazelLabel::parse(const std::string& label) {
   // TODO: Verify against actual Starlark syntax rules.
-  static const std::regex labelRe{"^(@\\S+)?/((/[^/:]+)*):(([^/:]+/)*[^/:]+)$"};
+  static const std::regex labelRe{
+    "^(@\\S+)?"           // repository
+    "/((/[^/:]*)*)"       // package identifier
+    ":"                   // target separator
+    "(([^/:]+/)*[^/:]+)$" // target
+  };
   std::smatch matchResults;
   if (!std::regex_match(label, matchResults, labelRe)) {
     return std::nullopt;
@@ -20,62 +45,57 @@ std::optional<BazelLabel> BazelLabel::parse(const std::string& label) {
 }
 
 BazelLabel::BazelLabel(std::smatch matchResults)
-: matchResults_{std::move(matchResults)}
+  : matchResults_{std::move(matchResults)}
 {}
 
-
-// --- BazelPackage ---
-
-BazelPackage::BazelPackage()
-  : BazelPackage("/", nullptr, {}, {})
-{}
-
-BazelPackage::BazelPackage(
-  QString name,
-  const BazelPackage* parentPackage,
-  ChildrenContainerType subPackages,
-  TargetsContainerType targets
-)
-  : name{std::move(name)},
-    parentPackage{parentPackage},
-    subPackages{std::move(subPackages)},
-targets{std::move(targets)}
-{}
-
-BazelPackage BazelPackage::subPackage(QString subPackageName) const {
-  return BazelPackage{std::move(subPackageName), this, {}, {}};
+std::string_view BazelLabel::repo() const {
+  return regexMatchToStringView(matchResults_[1]);
 }
 
-bool BazelPackage::isConsumedBy(const QStringView path) const {
-  static const QString subdirWildcardExpr = "/...";
-  static const QString rootPackageExpr = "//";
-
-  if (!path.endsWith(subdirWildcardExpr))
-    return false;
-
-  const auto& wildcardParentPath = path.left(path.length() - 3);
-  const auto& selfPath = wildcardParentPath.startsWith(rootPackageExpr) ? bazelPath() : dirPath();
-  return selfPath.startsWith(wildcardParentPath) && selfPath.length() > wildcardParentPath.length();
+QByteArrayView BazelLabel::repoBA() const {
+  return regexMatchToByteArrayView(matchResults_[1]);
 }
 
-QString BazelPackage::dirPath() const {
-  if (!parentPackage)
-    return name;  // root pakage name should be "/".
-  const auto& parentPath = parentPackage->dirPath();
-  return parentPath + (parentPath.endsWith("/") ? "" : "/") + name;
-  // TODO: Cache the result?
+std::string_view BazelLabel::packageDirPath() const {
+  return regexMatchToStringView(matchResults_[2]);
 }
 
-QString BazelPackage::bazelPath() const {
-  return "/" + dirPath();
+QByteArrayView BazelLabel::packageDirPathBA() const {
+  return regexMatchToByteArrayView(matchResults_[2]);
 }
 
-QString BazelPackage::targetLabel(const QString& targetName) const {
-  return bazelPath() + ":" + targetName;
+std::string_view BazelLabel::targetParentDirName() const {
+  return regexMatchToStringView(matchResults_[3]);
 }
 
+QByteArrayView BazelLabel::targetParentDirNameBA() const {
+  return regexMatchToByteArrayView(matchResults_[3]);
+}
 
-std::tuple<int, blaze_query::QueryResult> bazelQuery(
+std::string_view BazelLabel::targetName() const {
+  return regexMatchToStringView(matchResults_[4]);
+}
+
+QByteArrayView BazelLabel::targetNameBA() const {
+  return regexMatchToByteArrayView(matchResults_[4]);
+}
+
+// --- RuleAttributeRefs ---
+
+RuleAttributeRefs::RuleAttributeRefs(const blaze_query::Rule& rule) {
+  for (int i = 0; i < rule.attribute_size(); i++) {
+    const blaze_query::Attribute& attr = rule.attribute(i);
+
+    if (attr.name() == "$is_executable") {
+      is_executable = attr.has_boolean_value() && attr.boolean_value();
+      continue;
+    }
+  }  // for
+}
+
+// ---
+
+blaze_query::QueryResult bazelQuery(
 const QString& workspaceDir, const QString& query
 ) {
   QProcess bazelProc;
@@ -85,16 +105,15 @@ const QString& workspaceDir, const QString& query
 
   // TODO: Use some streaming instead of storing the entire output in memory.
   const auto& bazelOutput = bazelProc.readAllStandardOutput();
-  blaze_query::QueryResult qr;
-  if (!qr.ParseFromArray(bazelOutput.data(), bazelOutput.size())) {
+  blaze_query::QueryResult queryResult;
+  if (!queryResult.ParseFromArray(bazelOutput.data(), bazelOutput.size())) {
     throw std::runtime_error("Could not parse bazel output.");
   }
-
-  return {bazelProc.exitCode(), std::move(qr)};
+  return queryResult;
 }
 
 
-std::tuple<int, blaze_query::QueryResult> queryPackageRules(
+blaze_query::QueryResult queryPackageRules(
   const QString& workspaceDir, const QString& packageDirPath
 ) {
   return bazelQuery(workspaceDir, QString("kind(rule, //%1:*)").arg(packageDirPath));

@@ -18,9 +18,9 @@ class BuildTargetInfo;
 
 namespace BazelProjectManager::Internal {
 
-class BazelPackage;
+class BazelWorkspace;
 
-/// This class implements a Bazel project.
+/// This class implements a Bazel project in the IDE interface.
 /// Populates the project explorer model with info about project sources and structure.
 /// Provides information about buildable, runnable, and deployable targets of the project.
 class BazelProject final : public ProjectExplorer::Project {
@@ -35,11 +35,10 @@ public:
   /// Upon completion this will emit the `projectStructureReady` signal.
   void startProjectStructureUpdate();
 
-  /// @returns a flat list of known build targets as understood by the IDE.
-  /// @sa `startProjectStructureUpdate`
-  const QList<ProjectExplorer::BuildTargetInfo>& targets() const { return targets_; }
-
-  const std::shared_ptr<const BazelPackage> bazelTargets() const { return bazelPackage_; }
+  /// Provides access to the Bazel workspace structure.
+  /// WARN: This can be null before workspace scanning/parsing is complete.
+  /// @see startProjectStructureUpdate
+  const BazelWorkspace* workspace() const { return bazelWorkspace_.get(); }
 
   // Project interface:
 
@@ -80,11 +79,8 @@ private:
   std::unique_ptr<ProjectScanner> scanner_;
   bool goodScanAtLeastOnce_ = false;
 
-  // A lightweight collection of buildable targets.
-  QList<ProjectExplorer::BuildTargetInfo> targets_;
-
-  // A more detailed targets structure.
-  std::shared_ptr<BazelPackage> bazelPackage_;
+  // Contains project structure.
+  std::unique_ptr<BazelWorkspace> bazelWorkspace_;
 
   std::unique_ptr<CppEditor::CppProjectUpdater> cppCodeModelUpdater_;
 };

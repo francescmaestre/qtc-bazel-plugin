@@ -8,67 +8,72 @@
 #include <utils/utilsicons.h>
 
 // Own
+#include "BazelWorkspace.h"
 #include "logging.h"
 
 
 namespace BazelProjectManager::Internal {
 
 namespace {
-static const char ALL_TARGET[] = "all";
-}  // namespace
 
+static const char ALL_TARGET[] = "all";
+
+}  // namespace
 
 class BazelBuildableItem : public QStandardItem {
 public:
-  BazelBuildableItem(std::shared_ptr<const BazelPackage> package, const QIcon& icon, const QString& text)
-    : QStandardItem{icon, text},
-      package_{std::move(package)} {
+  BazelBuildableItem(const QIcon& icon, const QString& text)
+    : QStandardItem{icon, text}
+  {
     setCheckable(true);
   }
 
-  const BazelPackage* package() const { return package_.get(); }
-
-  virtual void updateChildren() = 0;
+  virtual void updateChildren() {}
 
   virtual const QString buildExpression() const = 0;
-
-protected:
-  std::shared_ptr<const BazelPackage> package_;
 };
 
+namespace {
 
 class BazelTargetItem : public BazelBuildableItem {
 public:
-  BazelTargetItem(std::shared_ptr<const BazelPackage> package, const size_t targetIdx)
-    : BazelBuildableItem{package, Utils::Icons::PROJECT.icon(), package->targets.at(targetIdx)},
-      targetIdx_{targetIdx} {
+  BazelTargetItem(const BuildTarget& target)
+    : BazelBuildableItem{Utils::Icons::PROJECT.icon(), target.buildTargetInfo.displayName}
+    , target_{target}
+  {
     setFlags(flags() | Qt::ItemNeverHasChildren);
   }
 
-  // Do nothing - target items have no children.
-  virtual void updateChildren() override {}
-
   const QString buildExpression() const override {
-    return package_->bazelPath() + ":" + package_->targets.at(targetIdx_);
+    return target_.buildTargetInfo.buildKey;
   }
 
 private:
-  size_t targetIdx_;
+  const BuildTarget& target_;
 };
 
 
 class BazelPackageItem : public BazelBuildableItem {
 public:
-  BazelPackageItem(std::shared_ptr<const BazelPackage> package)
-    : BazelBuildableItem{package, Utils::Icons::OPENFILE.icon(), package->name} {
+  BazelPackageItem(std::shared_ptr<const ProjectSubDirectory> package)
+    : BazelBuildableItem{Utils::Icons::OPENFILE.icon(), package->name()}
+    , package_{package}
+  {
     setUserTristate(true);
   }
 
   const QString buildExpression() const override {
+    QString result = package_->bazelPath();
     if (checkState() == Qt::CheckState::Checked) {
-      return package_->subPackage("...").targetLabel(ALL_TARGET);
+      if (!package_->bazelPath().endsWith("/")) {
+        result += "/";
+      }
+      result += "...";
     }
-    return package_->targetLabel(ALL_TARGET);
+    result += ":";
+    result += ALL_TARGET;
+
+    return result;
   }
 
   void updateChildren() override {
@@ -100,51 +105,56 @@ public:
       }  // switch (checkState())
     }  // for
   }
+
+private:
+  std::shared_ptr<const ProjectSubDirectory> package_;
 };
+
+
+/// Map package dir path to set of target names to build.
+using BuildSetInfo = std::map<QString, std::set<QString>>;
 
 
 BuildSetInfo parseBuildSet(const QStringList& initialBuildExpressions) {
   BuildSetInfo result;
   for (const auto& labelStr : initialBuildExpressions) {
-    // FIXME: Conversion from QString to std::string.
+    // TODO: Conversion from QString to std::string.
     const auto& labelStdStr = labelStr.toStdString();
     const auto maybeParsedLabel = BazelLabel::parse(labelStdStr);
     if (!maybeParsedLabel) {
       qCWarning(BazelPluginLog) << "Can't parse build target expression: '" << labelStr << "'";
       continue;
     }
-    // FIXME: Conversion from std::string to QString.
-    result[QString::fromStdString(maybeParsedLabel->packageDirPath().str())].insert(
-      QString::fromStdString(maybeParsedLabel->targetPath().str())
+    // TODO: Conversion from std::string to QString.
+    result[QString::fromStdString(std::string{maybeParsedLabel->packageDirPath()})].insert(
+      QString::fromStdString(std::string{maybeParsedLabel->targetName()})
     );
   }
   return result;
 }
 
-
-// static
-std::unique_ptr<QStandardItem> BazelBuildTargetsModel::buildModelItems(
-  std::shared_ptr<const BazelPackage> package,
+std::unique_ptr<QStandardItem> buildModelItems(
+  std::shared_ptr<const ProjectSubDirectory> subdirectory,
   const BuildSetInfo& initialBuildSet
 ) {
-  const bool allChecked = [&package, &initialBuildSet]() {
+  const bool allChecked = [&subdirectory, &initialBuildSet]() {
     for (const auto& [packageDirPath, _] : initialBuildSet) {
-      if (package->isConsumedBy(packageDirPath))
+      if (subdirectory->isConsumedBy(packageDirPath))
         return true;
     }
     return false;
   }();
 
   // Figure out which rules from the current package are present in the build set.
-  const auto& selectedTargets = [&initialBuildSet, &package]() -> const std::set<QString>& {
+  const auto& selectedTargets = [&initialBuildSet, &subdirectory]() -> const std::set<QString>& {
     static const std::set<QString> empty;
-    const auto buildSetIter = initialBuildSet.find(package->dirPath());
+    const auto buildSetIter = initialBuildSet.find(subdirectory->dirPath().toString());
     if (buildSetIter == initialBuildSet.end()) {
       return empty;
     }
     return buildSetIter->second;
   }();
-  const auto subPackagesBuildSetIter = initialBuildSet.find( package->subPackage("...").dirPath() );
+  const auto subPackagesBuildSetIter = initialBuildSet.find(subdirectory->dirPath() + "/...");
 
   bool buildAllImmediateChildren = allChecked;
   bool buildAllSubPackages =
@@ -153,24 +163,23 @@ std::unique_ptr<QStandardItem> BazelBuildTargetsModel::buildModelItems(
 
 
   // Create current package item.
-  auto packageItem = std::make_unique<BazelPackageItem>(package);
+  auto packageItem = std::make_unique<BazelPackageItem>(subdirectory);
 
   // TODO: Support alternative syntaxes.
   if (allChecked || buildAllSubPackages || selectedTargets.find("all") != selectedTargets.end()) {
     // Disallow changes to items selected implicitly by the parent.
-    const bool disableItem = allChecked && package->parentPackage;
+    const bool disableItem = allChecked && subdirectory->hasParent();
     packageItem->setEnabled(!disableItem);
     packageItem->setCheckState(Qt::CheckState::Checked);
     buildAllImmediateChildren = true;
   }
 
   // Create leaf target items.
-  for (size_t i = 0; i < package->targets.size(); i++) {
-    auto targetItem = std::make_unique<BazelTargetItem>(package, i);
+  for (const auto& target : subdirectory->targets()) {
+    auto targetItem = std::make_unique<BazelTargetItem>(target);
 
-    if (buildAllImmediateChildren ||
-        selectedTargets.find(package->targets.at(i)) != selectedTargets.end()
-    ) {
+    const auto& targetLabel = target.buildTargetInfo.buildKey;
+    if (buildAllImmediateChildren || selectedTargets.find(targetLabel) != selectedTargets.end()) {
       targetItem->setEnabled(false);
       targetItem->setCheckState(Qt::CheckState::Checked);
     }
@@ -179,23 +188,38 @@ std::unique_ptr<QStandardItem> BazelBuildTargetsModel::buildModelItems(
   }
 
   // Add subpackages recursively.
-  for (const auto& subPackage : package->subPackages) {
-    packageItem->appendRow(buildModelItems(subPackage, initialBuildSet).release());
+  for (const auto& [name, subdir] : subdirectory->subDirectories()) {
+    packageItem->appendRow(buildModelItems(subdir, initialBuildSet).release());
   }
 
   return std::move(packageItem);
 }
 
+}  // namespace
+
+
+// PUBLIC
+
+BazelBuildTargetsModel::BazelBuildTargetsModel()
+: QStandardItemModel()
+{
+  connect(
+    this, &BazelBuildTargetsModel::itemChanged,
+    this, &BazelBuildTargetsModel::onItemChanged
+  );
+}
+
 void BazelBuildTargetsModel::setProjectData(
-  std::shared_ptr<const BazelPackage> projectData,
-  const QStringList& initialBuildExpressions
+const BazelWorkspace* projectWorkspace, const QStringList& initialBuildExpressions
 ) {
   beginResetModel();
   clear();
 
-  if (projectData) {
+  if (projectWorkspace) {
     const auto& initialBuildSet = parseBuildSet(initialBuildExpressions);
-    invisibleRootItem()->appendRow(buildModelItems(projectData, initialBuildSet).release());
+    invisibleRootItem()->appendRow(
+      buildModelItems(projectWorkspace->rootPackage(), initialBuildSet).release()
+    );
     return;
   }
   endResetModel();
@@ -210,6 +234,8 @@ const QStringList BazelBuildTargetsModel::buildExpressions() const {
   );
   return exprs;
 }
+
+// PRIVATE
 
 void BazelBuildTargetsModel::onItemChanged(QStandardItem* item) {
   auto* const buildableItem = dynamic_cast<BazelBuildableItem*>(item);
