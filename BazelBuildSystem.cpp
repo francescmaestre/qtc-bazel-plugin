@@ -4,6 +4,7 @@
 #include <projectexplorer/buildconfiguration.h>
 #include <utils/filepath.h>
 
+#include "BazelWorkspace.h"
 #include "BazelProject.h"
 #include "bazel_helpers.h"
 #include "logging.h"
@@ -28,6 +29,7 @@ void BazelBuildSystem::construct() {
    this, &BazelBuildSystem::onTargetsParsed
   );
 
+  // TODO: Maybe this isn't really needed. BazelProject calls startProjectStructureUpdate in ctor.
   if (!bazelProject()->projectScanned()) {
     requestParse();
   }
@@ -44,6 +46,9 @@ void BazelBuildSystem::triggerParsing() {
   _parseGuard = guardParsingRun();
 
   try {
+    // TODO: It's probably best to move the implementation here. It was centralized inside
+    // BazelProject merely to avoid reparsing for each build configuration but this is not a problem
+    // since we're created not per build configuration anymore. See explanation in the header.
     bazelProject()->startProjectStructureUpdate();
   }
   catch(const std::exception& e) {
@@ -66,9 +71,14 @@ void BazelBuildSystem::onTargetsParsed(bool good) {
   }
   _parseGuard = {};
 
+  // Collect runnable targets - filter out DLLs and so on.
+  Q_ASSERT(bazelProject());
+  Q_ASSERT(bazelProject()->workspace());
   // This makes the build targets available for selection to create run configurations.
-  // TODO: It may make sense to prefilter to only runnable targets - e.g. remove DLLs and so on.
-  setApplicationTargets(bazelProject()->targets());
+  setApplicationTargets(
+    bazelProject()->workspace()->collectBuildTargets(BuildTargetKind::OnlyRunnable)
+  );
+
   emitBuildSystemUpdated();
 }
 

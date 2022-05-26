@@ -10,6 +10,7 @@
 #include <utils/filepath.h>
 
 // Own:
+#include "BazelWorkspace.h"
 #include "BazelProject.h"
 #include "BazelBuildConfiguration.h"
 #include "BazelBuildStepConfigWidget.h"
@@ -38,6 +39,7 @@ BazelBuildStep::BazelBuildStep(ProjectExplorer::BuildStepList* bsl, Utils::Id id
       case BazelCompilationMode::Fast: return "fastbuild";
       case BazelCompilationMode::Dbg: return "dbg";
       case BazelCompilationMode::Opt: return "opt";
+      case BazelCompilationMode::CompileMode_LAST: break;
     }
     return "fast";
   }();
@@ -78,12 +80,13 @@ QWidget* BazelBuildStep::createConfigWidget()
   const auto* bazelProject = static_cast<BazelProject*>(target()->project());
 
   auto widget = std::make_unique<BazelBuildStepConfigWidget>();
-  widget->setProjectData(bazelProject->bazelTargets(), buildFlags_, buildTargets_);
+  // At this moment `bazelProject->workspace()` is null.
+  widget->setProjectData(nullptr, buildFlags_, buildTargets_);
 
   connect(
     bazelProject, &BazelProject::projectScanComplete,
     widget.get(), [this, bazelProject, widget = widget.get()] {
-      widget->setProjectData(bazelProject->bazelTargets(), buildFlags_, buildTargets_);
+      widget->setProjectData(bazelProject->workspace(), buildFlags_, buildTargets_);
     }
   );
 

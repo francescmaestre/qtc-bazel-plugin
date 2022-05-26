@@ -5,8 +5,6 @@
 #include <QStringList>
 #include <QWidget>
 
-#include "BazelProject.h"
-
 
 class QStandardItemModel;
 class QStandardItem;
@@ -17,6 +15,9 @@ class BazelBuildStepConfigWidget;
 
 
 namespace BazelProjectManager::Internal {
+
+class BazelWorkspace;
+
 
 /// Schematic UI mockup:
 ///
@@ -45,7 +46,7 @@ public:
   ~BazelBuildStepConfigWidget();
 
   void setProjectData(
-    std::shared_ptr<const BazelPackage> projectData,
+    const BazelWorkspace* projectWorkspace,
     const QString& buildFlags,
     const QStringList& initialBuildExpressions
   );

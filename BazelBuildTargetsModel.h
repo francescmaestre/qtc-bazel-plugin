@@ -5,48 +5,36 @@
 
 #include <QStandardItemModel>
 
-#include "bazel_helpers.h"
-
 
 namespace BazelProjectManager::Internal {
 
-/// Map package dir path to set of target names to build.
-using BuildSetInfo = std::map<QString, std::set<QString>>;
-
 class BazelBuildableItem;
+class BazelWorkspace;
 
 
-/// Data model for the build targets tree view. This class allso tracks item selection and provides
+/// Data model for the build targets tree view. This class also tracks item selection and provides
 /// access to the resulting Bazel build expression.
 class BazelBuildTargetsModel : public QStandardItemModel {
   Q_OBJECT
 public:
-  BazelBuildTargetsModel()
-    : QStandardItemModel()
-  {
-    connect(
-      this, &BazelBuildTargetsModel::itemChanged,
-      this, &BazelBuildTargetsModel::onItemChanged
-    );
-  }
+  BazelBuildTargetsModel();
 
+  /// Assign Bazel workspace for display.
+  /// @param projectWorkspace - the workspace to display.
+  /// @param initialBuildExpressions - a list of active Bazel targets selection.
   void setProjectData(
-    std::shared_ptr<const BazelPackage> projectData,
+    const BazelWorkspace* projectWorkspace,
     const QStringList& initialBuildExpressions
   );
 
+  /// @returns a list of Bazel target expressions corresponding to the currently active selection.
   const QStringList buildExpressions() const;
 
 signals:
+  /// Emitted when active target selection changes.
   void buildSelectionChanged();
 
 private:
-  static
-  std::unique_ptr<QStandardItem> buildModelItems(
-    std::shared_ptr<const BazelPackage> package,
-    const BuildSetInfo& initialBuildSet
-  );
-
   void onItemChanged(QStandardItem *item);
 
   std::set<const BazelBuildableItem*> selectedBuildables_;

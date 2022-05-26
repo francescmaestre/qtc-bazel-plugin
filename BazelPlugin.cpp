@@ -106,10 +106,7 @@ bool BazelPlugin::initialize(const QStringList &arguments, QString *errorString)
   ProjectExplorer::ProjectManager::registerProjectType<BazelProject>("text/x-bazel");
   _guts = std::make_unique<PluginGuts>();
 
-  // TODO:
-  // Load settings
-  // Add actions to menus
-  // Connect to other plugins' signals
+  // TODO: Add actions to menus. Connect to other plugins' signals
 
   // TODO: Add file overlay icons.
   // FileIconProvider::registerIconOverlayForFilename(Constants::Icons::BAZEL, "WORKSPACE.bazel");

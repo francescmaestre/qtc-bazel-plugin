@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(BazelPlugin)
+project(BazelPlugin LANGUAGES CXX)
 enable_testing()
 
+include(GenerateExportHeader)
 include(compiler.cmake)
 
 # Add support for Conan to be able to find the dependencies managed by it.
@@ -29,15 +30,17 @@ add_library(
 
   ${proto_files}
   ${bazel_proto_srcs}
+
   bazel_helpers.cpp
   bazel_helpers.h
 )
+generate_export_header(bazel_api)
 target_include_directories(
   bazel_api
 
   PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
 )
 target_link_libraries(
   bazel_api
@@ -107,15 +110,31 @@ add_qtc_plugin(
 
     BazelRunConfiguration.cpp
     BazelRunConfiguration.h
+
+    BazelWorkspace.cpp
+    BazelWorkspace.h
 )
 set_target_properties(
   BazelProjectManager
 
   PROPERTIES
-  AUTOMOC ON
-  AUTORCC ON
-  AUTOUIC ON
+    AUTOMOC ON
+    AUTORCC ON
+    AUTOUIC ON
 )
-target_link_libraries(BazelProjectManager PRIVATE bazel_api)
+target_include_directories(
+  BazelProjectManager
+
+  PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_link_libraries(
+  BazelProjectManager
+
+  PUBLIC
+    bazel_api
+    QtCreator::Core
+)
+generate_export_header(BazelProjectManager)
 
 add_subdirectory(tests)
