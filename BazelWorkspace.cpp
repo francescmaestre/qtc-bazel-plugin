@@ -112,8 +112,6 @@ ProjectExplorer::RawProjectPart createProjectPart(
       continue;  // This way we filter out inputs which are non-files, or are non-existent.
     }
 
-    // FIXME: Populating knownSources_ should be reimplemented
-    //knownSources_.insert(absFilePath);
     part.files.push_back(absFilePath.toString());
   }  // for
 
@@ -157,20 +155,27 @@ bool BazelWorkspace::isKnownSourceFile(const Utils::FilePath& fileAbsPath) const
   return knownSources_.find(fileAbsPath) != knownSources_.end();
 }
 
+void BazelWorkspace::addToKnownSources(const ProjectExplorer::RawProjectPart& part) {
+  for (const auto& partFile : part.files) {
+    knownSources_.insert(Utils::FilePath::fromString(partFile));
+  }
+}
+
 ProjectExplorer::RawProjectParts BazelWorkspace::collectProjectParts() const {
   ProjectExplorer::RawProjectParts result;
   result.push_back(stubPart_);
 
   using FillFuncType = std::function<void(const ProjectSubDirectory*)>;
-  const FillFuncType fillRunnableTargets = [&](const ProjectSubDirectory* dir) {
+  const FillFuncType fillProjectParts = [&](const ProjectSubDirectory* dir) {
     for (const auto& target : dir->targets()) {
       result.push_back(target.projectPart);
     }
 
     for (const auto& [name, directory] : dir->subDirectories()) {
-      fillRunnableTargets(directory.get());
+      fillProjectParts(directory.get());
     }
   };
+  fillProjectParts(rootPackage().get());
 
   return result;
 }
@@ -316,6 +321,9 @@ ProjectSubDirectory::findSubPackage(const QStringView path) {
 
 void ProjectSubDirectory::placeTarget(const blaze_query::Rule& bazelRule) {
   auto projectPart = createProjectPart(bazelRule, workspaceDirPath());
+  // FIXME: Populating "known sources" should be reimplemented.
+  workspace()->addToKnownSources(projectPart);
+
   auto buildTargetInfo = createBuildTarget(bazelRule, projectPart, workspaceDirPath());
   bazelTargets_.insert(BuildTarget{std::move(projectPart), std::move(buildTargetInfo)});
 }

@@ -44,6 +44,8 @@ public:
 
   bool isKnownSourceFile(const Utils::FilePath& fileAbsPath) const;
 
+  void addToKnownSources(const ProjectExplorer::RawProjectPart& part);
+
   // TODO: Move the "stub part" to the project scanner and let it deal with it on its own.
   ProjectExplorer::RawProjectPart& stubPart() { return stubPart_; }
 
