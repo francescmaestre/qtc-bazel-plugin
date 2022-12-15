@@ -32,8 +32,8 @@ Create a build directory and run
 conan install <path_to_plugin_source>
 cmake \
   -D CMAKE_PREFIX_PATH=<path_to_qt_sdk>;<path_to_qtcreator_sdk> \
-	-D CMAKE_BUILD_TYPE=RelWithDebInfo \
-	<path_to_plugin_source>
+  -D CMAKE_BUILD_TYPE=RelWithDebInfo \
+  <path_to_plugin_source>
 cmake --build .
 ```
 
@@ -43,11 +43,13 @@ or to a combined binary and development package (Windows / Linux), or to the
 and `<path_to_plugin_source>` is the relative or absolute path to this plugin directory.
 
 When setting up a build in QtCreator you can use this to let the IDE put actual paths:
-```-D CMAKE_PREFIX_PATH:STRING=%{Qt:QT_INSTALL_PREFIX};%{IDE:ResourcePath}```
+`-D CMAKE_PREFIX_PATH:STRING=%{Qt:QT_INSTALL_PREFIX};%{IDE:ResourcePath}`
 
 ### Troubleshooting
 
 - Make sure to run `conan install` before running CMake; otherwise it will miss packages!
+- Make sure to use PRECISELY THE SAME version of Qt as the one Qt Creator was built against (see 
+  about dialog). Otherwise you may get configuration errors from CMake.
 - Make sure QtCreator's build kit has Qt SDK properly set up.
 - Export `QT_LOGGING_RULES=qtc.extensionsystem\*=true` before running QtCreator to test the plugin 
   to see extra logs from the plugin manager.
