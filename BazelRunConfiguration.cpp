@@ -17,10 +17,10 @@ const char BazelRunConfiguration::ID[] = "BazelProjectManager.RunConfiguration";
 BazelRunConfiguration::BazelRunConfiguration(Target* target, Utils::Id id)
   : ProjectExplorer::RunConfiguration(target, id) {
 
-  addAspect<LocalEnvironmentAspect>(target);
-  addAspect<WorkingDirectoryAspect>();
-  addAspect<ExecutableAspect>();
-  addAspect<ArgumentsAspect>();
+  auto* const envAspect = addAspect<LocalEnvironmentAspect>(target);
+  addAspect<WorkingDirectoryAspect>(macroExpander(), envAspect);
+  addAspect<ExecutableAspect>(target, ExecutableAspect::RunDevice);
+  addAspect<ArgumentsAspect>(macroExpander());
   addAspect<TerminalAspect>();
 
   setUpdater([this] { updateTargetInformation(); });

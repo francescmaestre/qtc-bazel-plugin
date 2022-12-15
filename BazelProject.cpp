@@ -60,8 +60,7 @@ signals:
 private:
   Utils::FilePath workspaceDirPath() const { return projectFilePath_.parentDir(); }
 
-  // TODO: FilePath::toDir is marked as deprecated!
-  QDir workspaceDir() const { return workspaceDirPath().toDir(); }
+  QDir workspaceDir() const { return QDir(workspaceDirPath().path()); }
 
   /// Query Bazel for build targets and process the results into a workable structure.
   ///
@@ -161,8 +160,7 @@ void BazelProject::ProjectScanner::buildExplorerFolderContents(FolderNode* folde
     }
   }
 
-  // TODO: FilePath::toDir is marked as deprecated!
-  const QDir& directory = folderNode->path().toDir();
+  const QDir directory{folderNode->path().path()};
 
   // Check directory contents to make sure we're not hiding something potentially useful.
   const auto& fileNames = directory.entryList(QDir::Files, QDir::Name);
@@ -237,8 +235,7 @@ DeploymentKnowledge BazelProject::deploymentKnowledge() const
 // --- BazelProject private ---
 
 QDir BazelProject::workspaceDir() const {
-  // TODO: FilePath::toDir is marked as deprecated!
-  return projectDirectory().toDir();
+  return QDir(projectDirectory().path());
 }
 
 void BazelProject::startProjectStructureUpdate() {

@@ -8,7 +8,7 @@ BazelProjectImporter::BazelProjectImporter(const Utils::FilePath& path)
 }
 
 
-QStringList BazelProjectImporter::importCandidates() {
+Utils::FilePaths BazelProjectImporter::importCandidates() {
   return {};
 }
 

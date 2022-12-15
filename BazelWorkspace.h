@@ -37,8 +37,7 @@ public:
 
   const Utils::FilePath& workspaceDirPath() const { return workspaceDirPath_; }
 
-  // TODO: FilePath::toDir is marked as deprecated!
-  QDir workspaceDir() const { return workspaceDirPath().toDir(); }
+  QDir workspaceDir() const { return QDir(workspaceDirPath().path()); }
 
   std::shared_ptr<ProjectSubDirectory> rootPackage() const { return rootPackage_; }
 

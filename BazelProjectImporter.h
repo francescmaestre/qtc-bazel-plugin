@@ -16,7 +16,7 @@ public:
 
   // ProjectImporter interface
 public:
-  QStringList importCandidates() override;
+  Utils::FilePaths importCandidates() override;
 
 protected:
   QList<void*> examineDirectory(
