@@ -71,13 +71,18 @@ void BazelBuildSystem::onTargetsParsed(bool good) {
   }
   _parseGuard = {};
 
-  // Collect runnable targets - filter out DLLs and so on.
-  Q_ASSERT(bazelProject());
-  Q_ASSERT(bazelProject()->workspace());
-  // This makes the build targets available for selection to create run configurations.
-  setApplicationTargets(
-    bazelProject()->workspace()->collectBuildTargets(BuildTargetKind::OnlyRunnable)
-  );
+  if (good) {
+    Q_ASSERT(bazelProject());
+    Q_ASSERT(bazelProject()->workspace());
+    // This makes the build targets available for selection to create run configurations.
+    setApplicationTargets(
+      // Collect runnable targets - filter out DLLs and so on.
+      bazelProject()->workspace()->collectBuildTargets(BuildTargetKind::OnlyRunnable)
+    );
+  }
+  else {
+    setApplicationTargets({});
+  }
 
   emitBuildSystemUpdated();
 }

@@ -5,6 +5,7 @@
 #include <mutex>
 #include <thread>
 
+#include <QtCore/QFuture>
 #include <projectexplorer/project.h>
 
 
@@ -38,7 +39,7 @@ public:
   /// Provides access to the Bazel workspace structure.
   /// WARN: This can be null before workspace scanning/parsing is complete.
   /// @see startProjectStructureUpdate
-  const BazelWorkspace* workspace() const { return bazelWorkspace_.get(); }
+  const BazelWorkspace* workspace() const { return workspace_.get(); }
 
   // Project interface:
 
@@ -53,6 +54,8 @@ public:
   ProjectExplorer::DeploymentKnowledge deploymentKnowledge() const override;
 
 signals:
+  /// Emitted at the end of a project scan.
+  /// @param good - true when a scan was done without errors.
   void projectScanComplete(bool good);
 
 protected:
@@ -65,22 +68,22 @@ protected:
 private:
   Q_OBJECT
 
-  // BazelBuildSystem should be able to delegate project parsing to a centrally responsible place
-  // which is here.
-  // friend class BazelBuildSystem;
-
   QDir workspaceDir() const;
 
-  class ProjectScanner;
+  Utils::FilePath workspaceDirPath() const;
 
-  void onScanComplete(bool good);
+  /// Internal scan completion handler.
+  void onScanComplete(
+      std::unique_ptr<BazelWorkspace> workspace,
+      std::unique_ptr<ProjectExplorer::ProjectNode> rootProjectNode
+  );
 
   std::mutex scannerMutex_;  // Guards the project scanner from multiple invocations.
-  std::unique_ptr<ProjectScanner> scanner_;
+  std::optional<QFuture<void>> scanFuture_;  // Kept to control the scanner thread.
   bool goodScanAtLeastOnce_ = false;
 
   // Contains project structure.
-  std::unique_ptr<BazelWorkspace> bazelWorkspace_;
+  std::unique_ptr<BazelWorkspace> workspace_;
 
   std::unique_ptr<CppEditor::CppProjectUpdater> cppCodeModelUpdater_;
 };
