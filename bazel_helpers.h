@@ -75,12 +75,35 @@ blaze_query::QueryResult bazelQuery(
 );
 
 
-/// Runs a query to list all rule targets of a given Bazel package.
+enum class QueryTargetKind: char {
+  Rule          = 1 << ::blaze_query::Target::Discriminator::Target_Discriminator_RULE,
+  SourceFile    = 1 << ::blaze_query::Target::Discriminator::Target_Discriminator_SOURCE_FILE,
+  GeneratedFile = 1 << ::blaze_query::Target::Discriminator::Target_Discriminator_GENERATED_FILE,
+  PackageGroup  = 1 << ::blaze_query::Target::Discriminator::Target_Discriminator_PACKAGE_GROUP,
+  EnvGroup      = 1 << ::blaze_query::Target::Discriminator::Target_Discriminator_ENVIRONMENT_GROUP,
+
+  // Combined shortcut values:
+  FilesAndRules = Rule | SourceFile | GeneratedFile,
+  Groups        = PackageGroup | EnvGroup,
+  AllKinds      = FilesAndRules | Groups,
+};
+
+/// Runs a query to list all targets of a specified kind of a given Bazel package.
 ///
 /// @param workspaceDir - Directory containing the Bazel workspace to query.
 /// @param packageDirPath - path, without the leading `//`, to the package to get the rules from.
-blaze_query::QueryResult queryPackageRules(
-  const QString& workspaceDir, const QString& packageDirPath
+///        Use '...' to query all subpackages.
+/// @param targetKinds - kinds of targets to include into the result.
+/// @returns Protobuf structure containing the query result.
+///
+/// The query uses the `--order_output=deps` flag, meaning dependencies are coming first.
+/// @see https://bazel.build/query/language#results-ordering.
+/// @note There might be a bug, but Bazel does not really order source files as dependencies of the
+/// rules using them as inputs.
+blaze_query::QueryResult queryPackage(
+    const QString& workspaceDir,
+    const QString& packageDirPath,
+    const QueryTargetKind targetKinds = QueryTargetKind::AllKinds
 );
 
 }  // namespace BazelProjectManager::Internal

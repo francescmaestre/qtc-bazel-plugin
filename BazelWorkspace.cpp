@@ -134,7 +134,7 @@ BazelWorkspace::BazelWorkspace(Utils::FilePath workspaceDirPath)
     // FIXME: What if workspace dir does not contain a package?
     rootPackage_{std::make_shared<ProjectSubDirectory>(this)},
     queryStart_{std::chrono::steady_clock::now()},
-    rulesQueryResult_{queryPackageRules(workspaceDirPath_.toString(), "...")}
+    rulesQueryResult_{queryPackage(workspaceDirPath_.toString(), "...", QueryTargetKind::Rule)}
 {
   {
     const auto doneQuery = std::chrono::steady_clock::now();
@@ -207,21 +207,25 @@ void BazelWorkspace::collectBazelTargets() {
 
   for (int i = 0; i < n_targets; i++) {
     const auto& bazelTarget = rulesQueryResult_.target(i);
-    if (bazelTarget.type() != blaze_query::Target_Discriminator_RULE) {
-      continue;
-    }
-    const blaze_query::Rule& bazelRule = bazelTarget.rule();
+    switch (bazelTarget.type()) {
+      case blaze_query::Target::RULE: {
+        const blaze_query::Rule& bazelRule = bazelTarget.rule();
+        const auto& maybeParsedName = BazelLabel::parse(bazelRule.name());
+        if (!maybeParsedName) {
+          throw std::runtime_error{"Could not parse target's label: " + bazelRule.name()};
+        }
 
-    const auto& maybeParsedName = BazelLabel::parse(bazelRule.name());
-    if (!maybeParsedName) {
-      throw std::runtime_error{"Could not parse target's label: " + bazelRule.name()};
-    }
+        auto package = rootPackage_->addSubDirectories(
+          QString::fromUtf8(maybeParsedName->packageDirPathBA())
+        );
+        Q_ASSERT(package);
+        package->placeTarget(bazelRule);
 
-    auto package = rootPackage_->addSubDirectories(
-      QString::fromUtf8(maybeParsedName->packageDirPathBA())
-    );
-    Q_ASSERT(package);
-    package->placeTarget(bazelRule);
+        break;
+      }
+      default:
+        continue;
+    }  // case
   }  // for
 }
 

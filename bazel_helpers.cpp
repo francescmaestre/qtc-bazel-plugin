@@ -6,6 +6,7 @@
 // Qt
 #include <QDir>
 #include <QProcess>
+#include <QStringList>
 
 
 namespace BazelProjectManager::Internal {
@@ -23,6 +24,32 @@ QByteArrayView regexMatchToByteArrayView(const std::ssub_match& match) {
     match.first.base(),
     static_cast<qsizetype>(match.length())
   };
+}
+
+QString targetKindToQueryStr(QueryTargetKind kind) {
+  switch (kind) {
+    case QueryTargetKind::Rule: {
+      return "rule";
+    }
+    case QueryTargetKind::SourceFile: {
+      return "source file";
+    }
+    case QueryTargetKind::GeneratedFile: {
+      return "generated file";
+    }
+    case QueryTargetKind::PackageGroup: {
+      return "package group";
+    }
+    case QueryTargetKind::EnvGroup: {
+      return "environment group";
+    }
+    default: {
+      throw std::runtime_error{
+          "Unsupported QueryTargetKind value: " +
+          std::to_string(static_cast<std::underlying_type_t<QueryTargetKind>>(kind))
+      };
+    }
+  }
 }
 
 }  // namespace
@@ -95,12 +122,20 @@ RuleAttributeRefs::RuleAttributeRefs(const blaze_query::Rule& rule) {
 
 // ---
 
-blaze_query::QueryResult bazelQuery(
-const QString& workspaceDir, const QString& query
-) {
+blaze_query::QueryResult bazelQuery(const QString& workspaceDir, const QString& query) {
   QProcess bazelProc;
   bazelProc.setWorkingDirectory(workspaceDir);
-  bazelProc.start("bazel", {"query", query, "--output", "proto"});
+  bazelProc.start(
+    "bazel",
+    {
+      "query", query,
+      "--keep_going",  // Don't abort on errors.
+      "--relative_locations",
+      "--noimplicit_deps",  // Don't care about toolchains and such. Yet.
+      "--output", "proto",
+      "--order_output", "deps",  // Default for `proto` output, yet make it  explicit.
+    }
+  );
   bazelProc.waitForFinished();
 
   // TODO: Use some streaming instead of storing the entire output in memory.
@@ -113,10 +148,23 @@ const QString& workspaceDir, const QString& query
 }
 
 
-blaze_query::QueryResult queryPackageRules(
-  const QString& workspaceDir, const QString& packageDirPath
+blaze_query::QueryResult queryPackage(
+    const QString& workspaceDir, const QString& packageDirPath, const QueryTargetKind targetKinds
 ) {
-  return bazelQuery(workspaceDir, QString("kind(rule, //%1:*)").arg(packageDirPath));
+  using U = std::underlying_type_t<QueryTargetKind>;
+  using BT = ::blaze_query::Target;
+
+  QStringList targetKindExprs;
+  for (int bit = BT::Discriminator_MIN; bit <= BT::Discriminator_MAX; bit++) {
+    const auto targetKind = static_cast<QueryTargetKind>(1 << bit);
+    if (static_cast<U>(targetKind) & static_cast<U>(targetKinds)) {
+      targetKindExprs.append(targetKindToQueryStr(targetKind));
+    }
+  }
+  const auto kindsExpr =
+      (targetKinds == QueryTargetKind::AllKinds) ? "*" : targetKindExprs.join("|");
+
+  return bazelQuery(workspaceDir, QString{"kind(\"(%1)\", //%2:*)"}.arg(kindsExpr, packageDirPath));
 }
 
 }  // namespace BazelProjectManager::Internal
