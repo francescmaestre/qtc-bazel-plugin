@@ -73,6 +73,7 @@ add_qtc_plugin(
   SOURCES
     README.md
     BazelProjectManager.json.in
+    resources.qrc
 
     logging.h
     logging.cpp

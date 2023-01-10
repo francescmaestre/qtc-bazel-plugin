@@ -25,9 +25,12 @@ using namespace ProjectExplorer;
 
 // NOTE: WORKSPACE file name is declared in the plugin's JSON manifest file.
 
+const char BAZEL_WORKSPACE_FILE_NAME[] = "WORKSPACE";
 const char BAZEL_PACKAGE_BUILD_FILE_NAME[] = "BUILD";
 const char BAZEL_PACKAGE_BUILD_FILE_NAME_W_EXT[] = "BUILD.bazel";
 const char BUILD_ICON[] = ":/projectexplorer/images/build.png";
+const char PACKAGE_OVERLAY_ICON[] = ":/bazelprojectmanager/images/bazel-overlay-icon.png";
+const char BAZEL_ICON[] = ":/bazelprojectmanager/images/bazel-icon.png";
 
 
 /// Recursively fills the child content under a given project explorer node.
@@ -37,28 +40,35 @@ const char BUILD_ICON[] = ":/projectexplorer/images/build.png";
 ///
 /// @param workspace - Bazel workspace to convert into the project explorer nodes.
 /// @param folderNode - project folder corresponding to a real FS directory.
+/// @param futureInterface - used for cancellation checks.
 void buildExplorerFolderContents(
-    BazelWorkspace& workspace, FolderNode* folderNode, QFutureInterface<void>& futureInterface
+    BazelWorkspace& workspace,
+    FolderNode& folderNode,
+    QFutureInterface<void>& futureInterface
 ) {
   if (futureInterface.isCanceled()) {
     return;
   }
 
-  // Create explorer tree nodes for each build target declared in its BUILD file.
+  const QDir directory{folderNode.filePath().path()};
+
   const auto& folderRelativePath =
-      folderNode->path().relativeChildPath(workspace.workspaceDirPath());
+      folderNode.path().relativeChildPath(workspace.workspaceDirPath());
   const auto packageInThisFolder =
       workspace.rootPackage()->findSubPackage(folderRelativePath.toString());
   if (packageInThisFolder) {
     // TODO: Add overlay icong to the folderNode.
-    // TODO: Add overlay icong to the BUILD file.
+    folderNode.setIcon(ProjectExplorer::DirectoryIcon(PACKAGE_OVERLAY_ICON));
 
-    // List all targets and their input files.
+    // TODO: Add overlay icong to the BUILD file. Mark accordingly those with `packageContainsErrors`
+
+    // List all build targets of this package (directory).
     for (const auto& target : packageInThisFolder->targets()) {
-      auto targetNode = std::make_unique<VirtualFolderNode>(folderNode->filePath());
+      auto targetNode = std::make_unique<VirtualFolderNode>(folderNode.filePath());
       targetNode->setDisplayName(target.buildTargetInfo.displayName);
       targetNode->setIcon(BUILD_ICON);  // Make it appear differently, not like just a directory.
 
+      // List all target's sources and generated files.
       for (const QString& fileAbsPath : target.projectPart.files) {
         auto fileNode = std::make_unique<FileNode>(
           Utils::FilePath::fromString(fileAbsPath),
@@ -68,22 +78,29 @@ void buildExplorerFolderContents(
         targetNode->addNestedNode(std::move(fileNode));
       }  // for
 
-      folderNode->addNode(std::move(targetNode));
+      folderNode.addNode(std::move(targetNode));
     }  // for
   }
 
-  const QDir directory{folderNode->path().path()};
-
-  // Check directory contents to make sure we're not hiding something potentially useful.
+  // Check directory contents and list all other files which might be still potentially useful.
   const auto& fileNames = directory.entryList(QDir::Files, QDir::Name);
   for (const auto& fileName : fileNames) {
-    const auto fileAbsPath = folderNode->filePath().pathAppended(fileName);
+    const auto fileAbsPath = folderNode.filePath().pathAppended(fileName);
     if (workspace.isKnownSourceFile(fileAbsPath)) {
       continue;  // Skip those belonging to some target.
     }
-    // TODO: Handle WORKSPACE files specially: mark as FileType::Project and add a custom icon.
-    // List files not belonging to any build target.
-    folderNode->addNode(std::make_unique<FileNode>(fileAbsPath, FileType::Unknown));
+
+    // Handle WORKSPACE files specially: mark as FileType::Project and add a custom icon.
+    // NOTE: WORKSPACE files are not included into Bazel query output.
+    const bool isWorkspaceFile = fileName == BAZEL_WORKSPACE_FILE_NAME;
+    auto fileNode = std::make_unique<FileNode>(
+        fileAbsPath,
+        isWorkspaceFile ? FileType::Project : FileType::Unknown
+    );
+    if (isWorkspaceFile) {
+      fileNode->setIcon(QIcon{BAZEL_ICON});
+    }
+    folderNode.addNode(std::move(fileNode));
 
     // These still need to belong to some RawProjectPart in order for C++ code model to work!
     workspace.stubPart().files.push_back(fileAbsPath.path());
@@ -101,8 +118,8 @@ void buildExplorerFolderContents(
     );
     subdirNode->setDisplayName(subdir);
 
-    buildExplorerFolderContents(workspace, subdirNode.get(), futureInterface);
-    folderNode->addNode(std::move(subdirNode));
+    buildExplorerFolderContents(workspace, *subdirNode.get(), futureInterface);
+    folderNode.addNode(std::move(subdirNode));
   }
 }
 
@@ -173,7 +190,7 @@ void BazelProject::startProjectStructureUpdate() {
         auto rootProjectNode = std::make_unique<ProjectNode>(workspaceDirPath());
 
         std::optional<ScopedStopwatchLogger> fileScanWatch{"Files scan duration"};
-        buildExplorerFolderContents(*workspace.get(), rootProjectNode.get(), futureInterface);
+        buildExplorerFolderContents(*workspace, *rootProjectNode, futureInterface);
         fileScanWatch.reset();
 
         // Pass the results back into the owner thread.
