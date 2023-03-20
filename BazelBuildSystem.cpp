@@ -24,13 +24,16 @@ BazelBuildSystem::BazelBuildSystem(ProjectExplorer::BuildConfiguration* buildCon
 }
 
 void BazelBuildSystem::construct() {
+  assert(bazelProject());
+
+  // Watch full project parse outcome.
   connect(
-   bazelProject(), &BazelProject::projectScanComplete,
-   this, &BazelBuildSystem::onTargetsParsed
+    bazelProject(), &BazelProject::projectScanComplete,
+    this, &BazelBuildSystem::onTargetsParsed
   );
 
-  // TODO: Maybe this isn't really needed. BazelProject calls startProjectStructureUpdate in ctor.
   if (!bazelProject()->projectScanned()) {
+    // This will eventually invoke `triggerParsing` below.
     requestParse();
   }
 }
@@ -48,7 +51,9 @@ void BazelBuildSystem::triggerParsing() {
   try {
     // TODO: It's probably best to move the implementation here. It was centralized inside
     // BazelProject merely to avoid reparsing for each build configuration but this is not a problem
-    // since we're created not per build configuration anymore. See explanation in the header.
+    // since we're not created per build configuration anymore. In fact, it's likely more correct to
+    // have independent parsings per build configurations since some of the bits may differ between
+    // those (e.g. paths of output executables).
     bazelProject()->startProjectStructureUpdate();
   }
   catch(const std::exception& e) {

@@ -134,6 +134,8 @@ blaze_query::QueryResult bazelQuery(const QString& workspaceDir, const QString& 
       "--noimplicit_deps",  // Don't care about toolchains and such. Yet.
       "--output", "proto",
       "--order_output", "deps",  // Default for `proto` output, yet make it  explicit.
+      // "--proto:output_rule_attrs", "$is_executable",
+      // TODO: Set --proto:output_rule_attrs=... to attributes of actual interest.
     }
   );
   bazelProc.waitForFinished();
