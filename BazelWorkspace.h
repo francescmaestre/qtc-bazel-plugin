@@ -16,7 +16,6 @@
 #include <projectexplorer/rawprojectpart.h>
 
 // own
-#include "bazel_helpers.h"
 #include <bazelprojectmanager_export.h>
 
 
@@ -30,6 +29,17 @@ enum class BuildTargetKind {
   OnlyRunnable,
 };
 
+
+/// Represents a project target.
+struct BuildTarget {
+  ProjectExplorer::RawProjectPart projectPart;
+  ProjectExplorer::BuildTargetInfo buildTargetInfo;
+};
+
+/// Comparator operator to enable storage in sorted containers.
+bool operator<(const BuildTarget& left, const BuildTarget& right);
+
+
 /// Models a Bazel workspace structure, consisting of a tree of packages.
 class BAZELPROJECTMANAGER_EXPORT BazelWorkspace {
 public:
@@ -39,14 +49,9 @@ public:
 
   QDir workspaceDir() const { return QDir(workspaceDirPath().path()); }
 
-  std::shared_ptr<ProjectSubDirectory> rootPackage() const { return rootPackage_; }
+  std::shared_ptr<ProjectSubDirectory> rootPackage() const { return rootDir_; }
 
   bool isKnownSourceFile(const Utils::FilePath& fileAbsPath) const;
-
-  void addToKnownSources(const ProjectExplorer::RawProjectPart& part);
-
-  // TODO: Move the "stub part" to the project scanner and let it deal with it on its own.
-  ProjectExplorer::RawProjectPart& stubPart() { return stubPart_; }
 
   /// Recursively collects information about build targets from all subpackages of the workspace.
   ProjectExplorer::RawProjectParts collectProjectParts() const;
@@ -59,26 +64,13 @@ public:
 private:
   friend class ProjectSubDirectory;
 
-  void collectBazelTargets();
+  /// Called by ProjectSubDirectory to notify of newly added build targets.
+  void onBuildTargetAdded(const BuildTarget& target);
 
   std::set<Utils::FilePath> knownSources_;
   Utils::FilePath workspaceDirPath_;
-  std::shared_ptr<ProjectSubDirectory> rootPackage_;
-  std::chrono::steady_clock::time_point queryStart_;
-  blaze_query::QueryResult rulesQueryResult_;
-
-  // Start off with a part - it will collect files not belonging to any build target. See stubPart.
-  ProjectExplorer::RawProjectPart stubPart_;
-  QVector<ProjectExplorer::BuildTargetInfo> buildTargetInfoItems_;
+  std::shared_ptr<ProjectSubDirectory> rootDir_;
 };
-
-
-/// Represents a project target.
-struct BuildTarget {
-  ProjectExplorer::RawProjectPart projectPart;
-  ProjectExplorer::BuildTargetInfo buildTargetInfo;
-};
-bool operator<(const BuildTarget& left, const BuildTarget& right);
 
 
 /// Models a tree of sub-directories and their buildable targets with inputs and outputs.
@@ -89,6 +81,8 @@ public:
   explicit ProjectSubDirectory(BazelWorkspace* workspace);
 
   const QString& name() const;
+  BazelWorkspace* workspace() const;
+  Utils::FilePath workspaceDirPath() const;
 
   // NOTE: We want a SORTED container here in order for it to be displayed nicely by default.
   using TargetsContainerType = std::set<BuildTarget>;
@@ -103,7 +97,7 @@ public:
   /// Access child directories (Bazel packages) contained in this directory (package).
   const SubdirectoriesContainerType& subDirectories() const { return subDirs_; }
 
-  bool hasParent() const { return parentPackage_.use_count(); }
+  bool hasParent() const { return parentDir_.use_count(); }
 
   /// @param path - bazel label (starting with `//`) or a directory path (starting with `/`).
   /// @returns whether this package is covered by the wildcard `path` and is a child of `path`.
@@ -127,21 +121,17 @@ public:
   /// @returns a sub-package as found by the given `path`.
   std::shared_ptr<ProjectSubDirectory> findSubPackage(const QStringView path);
 
-  void placeTarget(const blaze_query::Rule& bazelRule);
+  void placeTarget(BuildTarget buildTarget);
 
 private:
   friend class BazelWorkspace;
 
   explicit ProjectSubDirectory(const QStringView subDirPath);
 
-  BazelWorkspace* workspace() const;
-
-  Utils::FilePath workspaceDirPath() const;
-
   BazelWorkspace* workspace_ = nullptr;
   QString name_;
   mutable QString cachedBazelPath_;  // see bazelPath()
-  std::weak_ptr<const ProjectSubDirectory> parentPackage_;
+  std::weak_ptr<const ProjectSubDirectory> parentDir_;
   SubdirectoriesContainerType subDirs_;
   TargetsContainerType bazelTargets_;
 };

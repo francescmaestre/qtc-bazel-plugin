@@ -119,6 +119,35 @@ ProjectExplorer::RawProjectPart createProjectPart(
 }
 
 
+void collectQueriedRules(
+    const blaze_query::QueryResult& rulesQueryResult,
+    ProjectSubDirectory& destRoot
+) {
+  const auto n_targets = rulesQueryResult.target_size();
+
+  for (int i = 0; i < n_targets; i++) {
+    const auto& queryTarget = rulesQueryResult.target(i);
+    if (queryTarget.type() != blaze_query::Target::RULE) {
+      continue;
+    }
+    const blaze_query::Rule& bazelRule = queryTarget.rule();
+
+    const auto& maybeParsedName = BazelLabel::parse(bazelRule.name());
+    if (!maybeParsedName) {
+      throw std::runtime_error{"Could not parse target's label: " + bazelRule.name()};
+    }
+
+    auto package = destRoot.addSubDirectories(
+      QString::fromUtf8(maybeParsedName->packageDirPathBA())
+    );
+    Q_ASSERT(package);
+
+    auto projectPart = createProjectPart(bazelRule, package->workspaceDirPath());
+    auto buildTargetInfo = createBuildTarget(bazelRule, projectPart, package->workspaceDirPath());
+    package->placeTarget(BuildTarget{std::move(projectPart), std::move(buildTargetInfo)});
+  }  // for
+}
+
 }  // namespace
 
 bool operator<(const BuildTarget& left, const BuildTarget& right) {
@@ -132,38 +161,30 @@ bool operator<(const BuildTarget& left, const BuildTarget& right) {
 BazelWorkspace::BazelWorkspace(Utils::FilePath workspaceDirPath)
   : workspaceDirPath_{std::move(workspaceDirPath)},
     // FIXME: What if workspace dir does not contain a package?
-    rootPackage_{std::make_shared<ProjectSubDirectory>(this)},
-    queryStart_{std::chrono::steady_clock::now()},
-    rulesQueryResult_{queryPackage(workspaceDirPath_.toString(), "...", QueryTargetKind::Rule)}
+    rootDir_{std::make_shared<ProjectSubDirectory>(this)}
 {
   {
-    const auto doneQuery = std::chrono::steady_clock::now();
-    const auto queryDurationMillis =
-      std::chrono::duration_cast<std::chrono::milliseconds>(doneQuery - queryStart_);
-    qCInfo(BazelPluginLog) << "Querying duration:" << queryDurationMillis.count() << "ms";
-  }
+    std::optional<ScopedStopwatchLogger> rulesQueryTimer("Querying targets");
+    const auto& rulesQueryResult =
+        queryPackage(workspaceDirPath_.toString(), "...", QueryTargetKind::Rule);
+    rulesQueryTimer.reset();
 
-  const auto collectStart = std::chrono::steady_clock::now();
-  collectBazelTargets();  // 146 - 196 ms
-  const auto collectEnd = std::chrono::steady_clock::now();
-  const auto collectDurationMillis =
-    std::chrono::duration_cast<std::chrono::milliseconds>(collectEnd - collectStart);
-  qCInfo(BazelPluginLog) << "Target collection:" << collectDurationMillis.count() << "ms";
+    {
+      ScopedStopwatchLogger targetCollectionTimer("Collecting targets");
+      collectQueriedRules(rulesQueryResult, *rootDir_);
+    }
+  }
 }
 
-bool BazelWorkspace::isKnownSourceFile(const Utils::FilePath& fileAbsPath) const {
-  return knownSources_.find(fileAbsPath) != knownSources_.end();
-}
-
-void BazelWorkspace::addToKnownSources(const ProjectExplorer::RawProjectPart& part) {
-  for (const auto& partFile : part.files) {
-    knownSources_.insert(Utils::FilePath::fromString(partFile));
+bool BazelWorkspace::isKnownSourceFile(const Utils::FilePath& filePath) const {
+  if (filePath.isRelativePath()) {
+    // FIXME: Support both relative and absolute file paths
   }
+  return knownSources_.find(filePath) != knownSources_.end();
 }
 
 ProjectExplorer::RawProjectParts BazelWorkspace::collectProjectParts() const {
   ProjectExplorer::RawProjectParts result;
-  result.push_back(stubPart_);
 
   using FillFuncType = std::function<void(const ProjectSubDirectory*)>;
   const FillFuncType fillProjectParts = [&](const ProjectSubDirectory* dir) {
@@ -202,31 +223,10 @@ BazelWorkspace::collectBuildTargets(const BuildTargetKind kind) const
   return result;
 }
 
-void BazelWorkspace::collectBazelTargets() {
-  const auto n_targets = rulesQueryResult_.target_size();
-
-  for (int i = 0; i < n_targets; i++) {
-    const auto& bazelTarget = rulesQueryResult_.target(i);
-    switch (bazelTarget.type()) {
-      case blaze_query::Target::RULE: {
-        const blaze_query::Rule& bazelRule = bazelTarget.rule();
-        const auto& maybeParsedName = BazelLabel::parse(bazelRule.name());
-        if (!maybeParsedName) {
-          throw std::runtime_error{"Could not parse target's label: " + bazelRule.name()};
-        }
-
-        auto package = rootPackage_->addSubDirectories(
-          QString::fromUtf8(maybeParsedName->packageDirPathBA())
-        );
-        Q_ASSERT(package);
-        package->placeTarget(bazelRule);
-
-        break;
-      }
-      default:
-        continue;
-    }  // case
-  }  // for
+void BazelWorkspace::onBuildTargetAdded(const BuildTarget& target) {
+  for (const auto& partFile : target.projectPart.files) {
+    knownSources_.insert(Utils::FilePath::fromString(partFile));
+  }
 }
 
 // --- ProjectSubDirectory ---
@@ -263,7 +263,7 @@ QStringView ProjectSubDirectory::dirPath() const {
 
 const QString& ProjectSubDirectory::bazelPath() const {
   if (cachedBazelPath_.isEmpty()) {
-    auto lockedParent = parentPackage_.lock();
+    auto lockedParent = parentDir_.lock();
     if (lockedParent) {
       const auto& parentPath = lockedParent->dirPath();
       cachedBazelPath_ = "/" + parentPath + (parentPath.endsWith('/') ? "" : "/") + name();
@@ -279,7 +279,7 @@ BazelWorkspace* ProjectSubDirectory::workspace() const {
   if (workspace_)
     return workspace_;
 
-  auto lockedParent = parentPackage_.lock();
+  auto lockedParent = parentDir_.lock();
   Q_ASSERT(lockedParent);
   return lockedParent->workspace();
 }
@@ -290,7 +290,7 @@ Utils::FilePath ProjectSubDirectory::workspaceDirPath() const {
 
 void ProjectSubDirectory::addSubDir(std::shared_ptr<ProjectSubDirectory> child) {
   subDirs_.emplace(child->name(), child);
-  child->parentPackage_ = shared_from_this();
+  child->parentDir_ = shared_from_this();
 }
 
 std::shared_ptr<ProjectSubDirectory>
@@ -323,13 +323,11 @@ ProjectSubDirectory::findSubPackage(const QStringView path) {
   return searchedParent;
 }
 
-void ProjectSubDirectory::placeTarget(const blaze_query::Rule& bazelRule) {
-  auto projectPart = createProjectPart(bazelRule, workspaceDirPath());
-  // FIXME: Populating "known sources" should be reimplemented.
-  workspace()->addToKnownSources(projectPart);
-
-  auto buildTargetInfo = createBuildTarget(bazelRule, projectPart, workspaceDirPath());
-  bazelTargets_.insert(BuildTarget{std::move(projectPart), std::move(buildTargetInfo)});
+void ProjectSubDirectory::placeTarget(BuildTarget buildTarget) {
+  const auto& [iter, added] = bazelTargets_.insert(std::move(buildTarget));
+  if (added) {
+    workspace()->onBuildTargetAdded(*iter);
+  }
 }
 
 }  // namespace BazelProjectManager::Internal

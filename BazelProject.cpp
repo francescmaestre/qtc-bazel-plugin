@@ -38,12 +38,16 @@ const char BAZEL_ICON[] = ":/bazelprojectmanager/images/bazel-icon.png";
 /// This will combine the information about build targets with the file system entries and
 /// populate the project explorer folder with relevant child nodes.
 ///
-/// @param workspace - Bazel workspace to convert into the project explorer nodes.
-/// @param folderNode - project folder corresponding to a real FS directory.
-/// @param futureInterface - used for cancellation checks.
+/// @param [in] workspace - Bazel workspace to convert into the project explorer nodes.
+/// @param [in] folderNode - project folder corresponding to a real FS directory.
+/// @param [out] buildFilePaths - sink for Bazel BUILD file paths located in the project.
+/// @param [out] unknownSourcesPart - project part to collect files not belonging to any Bazel target.
+/// @param [in] futureInterface - used for cancellation checks.
 void buildExplorerFolderContents(
-    BazelWorkspace& workspace,
+    const BazelWorkspace& workspace,
     FolderNode& folderNode,
+    QSet<Utils::FilePath>& buildFilePaths,
+    ProjectExplorer::RawProjectPart& unknownSourcesPart,
     QFutureInterface<void>& futureInterface
 ) {
   if (futureInterface.isCanceled()) {
@@ -76,6 +80,8 @@ void buildExplorerFolderContents(
         );
         // This will add intermediate folder nodes in case file is in a folderNode's subdirectory.
         targetNode->addNestedNode(std::move(fileNode));
+
+        // TODO: List generated sources (use ProjectExplorer::Constants::FILEOVERLAY_PRODUCT).
       }  // for
 
       folderNode.addNode(std::move(targetNode));
@@ -92,18 +98,22 @@ void buildExplorerFolderContents(
 
     // Handle WORKSPACE files specially: mark as FileType::Project and add a custom icon.
     // NOTE: WORKSPACE files are not included into Bazel query output.
-    const bool isWorkspaceFile = fileName == BAZEL_WORKSPACE_FILE_NAME;
+    const bool isBazelFile =
+        fileName == BAZEL_WORKSPACE_FILE_NAME ||
+        fileName == BAZEL_PACKAGE_BUILD_FILE_NAME ||
+        fileName == BAZEL_PACKAGE_BUILD_FILE_NAME_W_EXT;
     auto fileNode = std::make_unique<FileNode>(
         fileAbsPath,
-        isWorkspaceFile ? FileType::Project : FileType::Unknown
+        isBazelFile ? FileType::Project : FileType::Unknown
     );
-    if (isWorkspaceFile) {
+    if (isBazelFile) {
+      buildFilePaths.insert(fileAbsPath);
       fileNode->setIcon(QIcon{BAZEL_ICON});
     }
     folderNode.addNode(std::move(fileNode));
 
     // These still need to belong to some RawProjectPart in order for C++ code model to work!
-    workspace.stubPart().files.push_back(fileAbsPath.path());
+    unknownSourcesPart.files.push_back(fileAbsPath.path());
   }
 
   // Process subdirectories in the same way.
@@ -118,7 +128,13 @@ void buildExplorerFolderContents(
     );
     subdirNode->setDisplayName(subdir);
 
-    buildExplorerFolderContents(workspace, *subdirNode.get(), futureInterface);
+    buildExplorerFolderContents(
+        workspace,
+        *subdirNode.get(),
+        buildFilePaths,
+        unknownSourcesPart,
+        futureInterface
+    );
     folderNode.addNode(std::move(subdirNode));
   }
 }
@@ -148,11 +164,8 @@ BazelProject::BazelProject(const Utils::FilePath& fileName)
     // Yes, the IDE assumes ownership. See `~TargetPrivate` in projectexplorer/target.cpp.
     return new BazelBuildSystem(t);
   });
-
-  startProjectStructureUpdate();
 }
 
-// Avoid errors from std::unique_ptr<> around forward declared ProjectScanner (incomplete type).
 BazelProject::~BazelProject() {
   if (scanFuture_) {
     scanFuture_->cancel();
@@ -188,16 +201,30 @@ void BazelProject::startProjectStructureUpdate() {
         // packages and targets.
         auto workspace = std::make_unique<BazelWorkspace>(workspaceDirPath());
         auto rootProjectNode = std::make_unique<ProjectNode>(workspaceDirPath());
+        QSet<Utils::FilePath> buildFilePaths;
+        ProjectExplorer::RawProjectPart unknownSourcesPart;
 
         std::optional<ScopedStopwatchLogger> fileScanWatch{"Files scan duration"};
-        buildExplorerFolderContents(*workspace, *rootProjectNode, futureInterface);
+        buildExplorerFolderContents(
+          *workspace,
+          *rootProjectNode,
+          buildFilePaths,
+          unknownSourcesPart,
+          futureInterface
+        );
         fileScanWatch.reset();
 
         // Pass the results back into the owner thread.
         QMetaObject::invokeMethod(
           this,
-          [this, ws = std::move(workspace), rpn = std::move(rootProjectNode)] () mutable {
-            this->onScanComplete(std::move(ws), std::move(rpn));
+          [
+            this,
+            ws = std::move(workspace),
+            rpn = std::move(rootProjectNode),
+            bfs = std::move(buildFilePaths),
+            usp = std::move(unknownSourcesPart)
+          ] () mutable {
+            this->onScanComplete(std::move(ws), std::move(rpn), std::move(bfs), std::move(usp));
           },
           Qt::ConnectionType::QueuedConnection
         );
@@ -216,7 +243,9 @@ void BazelProject::startProjectStructureUpdate() {
 
 void BazelProject::onScanComplete(
     std::unique_ptr<BazelWorkspace> parsedWorkspace,
-    std::unique_ptr<ProjectExplorer::ProjectNode> parsedRootProjectNode
+    std::unique_ptr<ProjectExplorer::ProjectNode> parsedRootProjectNode,
+    QSet<Utils::FilePath> buildFilePaths,
+    ProjectExplorer::RawProjectPart unknownSourcesPart
 ) {
   // This should be finished now, so we don't need to keep hold of it.
   scanFuture_.reset();
@@ -224,7 +253,9 @@ void BazelProject::onScanComplete(
   // TODO: Maybe better pass the lock from the scanner thread?
   std::scoped_lock<std::mutex> lock(std::adopt_lock, scannerMutex_);  // Unlock it no matter what.
   setRootProjectNode(std::move(parsedRootProjectNode));
+  setExtraProjectFiles(buildFilePaths);
   workspace_ = std::move(parsedWorkspace);
+  unknownSourcesPart_ = std::move(unknownSourcesPart);
 
   emit projectScanComplete(workspace_ && rootProjectNode());
 
@@ -234,13 +265,16 @@ void BazelProject::onScanComplete(
     return;
   }
 
-  // TODO: I wonder if this is safe to do on a background thread.
+  auto projectParts = workspace()->collectProjectParts();
+  projectParts.push_back(unknownSourcesPart_);
+
+  // Actual update is performed on a background thread, this is just triggering it.
   cppCodeModelUpdater_->update(
     ProjectUpdateInfo{
       this,
       KitInfo{activeTarget()->kit()},  // TODO: What if the active Target changes?
       activeTarget()->activeBuildConfiguration()->environment(),
-      workspace()->collectProjectParts()
+      projectParts
     }
   );
 }

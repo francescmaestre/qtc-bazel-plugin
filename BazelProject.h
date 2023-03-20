@@ -7,6 +7,7 @@
 
 #include <QtCore/QFuture>
 #include <projectexplorer/project.h>
+#include <projectexplorer/rawprojectpart.h>
 
 
 namespace CppEditor {
@@ -74,8 +75,10 @@ private:
 
   /// Internal scan completion handler.
   void onScanComplete(
-      std::unique_ptr<BazelWorkspace> workspace,
-      std::unique_ptr<ProjectExplorer::ProjectNode> rootProjectNode
+      std::unique_ptr<BazelWorkspace> parsedWorkspace,
+      std::unique_ptr<ProjectExplorer::ProjectNode> parsedRootProjectNode,
+      QSet<Utils::FilePath> buildFilePaths,
+      ProjectExplorer::RawProjectPart unknownSourcesPart
   );
 
   std::mutex scannerMutex_;  // Guards the project scanner from multiple invocations.
@@ -84,6 +87,9 @@ private:
 
   // Contains project structure.
   std::unique_ptr<BazelWorkspace> workspace_;
+
+  // This will collect files not belonging to any Bazel target.
+  ProjectExplorer::RawProjectPart unknownSourcesPart_;
 
   std::unique_ptr<CppEditor::CppProjectUpdater> cppCodeModelUpdater_;
 };

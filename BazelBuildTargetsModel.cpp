@@ -8,6 +8,7 @@
 #include <utils/utilsicons.h>
 
 // Own
+#include "bazel_helpers.h"
 #include "BazelWorkspace.h"
 #include "logging.h"
 
