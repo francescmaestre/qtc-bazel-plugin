@@ -1,6 +1,7 @@
 #include "BazelPlugin.h"
 
 // Qt Creator API:
+#include <app/app_version.h>
 #include <coreplugin/icore.h>
 #include <coreplugin/icontext.h>
 #include <coreplugin/actionmanager/actionmanager.h>
@@ -80,6 +81,7 @@ struct PluginGuts
 
   // These 2 enable running the build targets.
   BazelRunConfigurationFactory runConfigurationFactory;
+#if (IDE_VERSION_MAJOR < 10)
   ProjectExplorer::RunWorkerFactory runWorkerFactory{
       ProjectExplorer::RunWorkerFactory::make<ProjectExplorer::SimpleTargetRunner>(),
       {ProjectExplorer::Constants::NORMAL_RUN_MODE},
@@ -87,6 +89,13 @@ struct PluginGuts
         runConfigurationFactory.runConfigurationId(),
       }
   };
+#else  // IDE_VERSION_MAJOR >= 10
+  ProjectExplorer::SimpleTargetRunnerFactory runWorkerFactory{
+    {
+      runConfigurationFactory.runConfigurationId(),
+    }
+  };
+#endif
 };
 
 
