@@ -69,15 +69,14 @@ where `<path_to_plugin>` is the path to the resulting plugin library in the buil
 You might want to add `-temporarycleansettings` (or `-tcs`) to ensure that the opened Qt Creator
 instance cannot mess with your user-global Qt Creator settings.
 
-When building and running the plugin from Qt Creator, you can use
+When building and running the plugin from Qt Creator, you can use these values as the 
+`Command line arguments` field in the run settings. On Windows and Linux:
 
     -pluginpath "%{buildDir}/lib/qtcreator/plugins" -tcs
 
-on Windows and Linux, or
+or this on Mac OS:
 
     -pluginpath "%{buildDir}/Qt Creator.app/Contents/PlugIns" -tcs
-
-for the `Command line arguments` field in the run settings.
 
 ## License
 This software is licensed under [The MIT License](https://opensource.org/licenses/mit-license.php).
