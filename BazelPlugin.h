@@ -4,8 +4,6 @@
 
 #include <extensionsystem/iplugin.h>
 
-#include "plugin_global.h"
-
 
 namespace BazelProjectManager::Internal {
 

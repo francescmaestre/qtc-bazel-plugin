@@ -5,6 +5,7 @@
 
 // QtCreator:
 #include <projectexplorer/buildsteplist.h>
+#include <projectexplorer/projectexplorerconstants.h>
 #include <projectexplorer/target.h>
 #include <utils/commandline.h>
 #include <utils/filepath.h>
@@ -25,6 +26,14 @@ const char CONFIG_KEY_CMD_FLAGS[] = "BazelProjectManager.BuildStep.CmdFlags";
 
 namespace BazelProjectManager::Internal
 {
+
+BazelBuildStepFactory::BazelBuildStepFactory() {
+  registerStep<BazelBuildStep>(BazelBuildStep::STEP_ID);
+  setDisplayName(BazelBuildStep::tr("Bazel Build"));
+  setSupportedProjectType(Constants::Project::ID);
+  setSupportedStepList(ProjectExplorer::Constants::BUILDSTEPS_BUILD);
+}
+
 
 // -- BazelBuildStep --
 

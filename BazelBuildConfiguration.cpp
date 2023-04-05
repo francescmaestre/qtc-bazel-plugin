@@ -108,11 +108,11 @@ QList<ProjectExplorer::BuildInfo> BazelBuildConfigurationFactory::generateBuild(
   QList<BuildInfo> result;
 
   for (auto mode = BazelCompilationMode::Fast; mode != BazelCompilationMode::CompileMode_LAST; ++mode) {
-      BuildInfo info = createBuildInfo(mode);
-      info.factory = this;
-      info.kitId = kit->id();
+    BuildInfo info = createBuildInfo(mode);
+    info.factory = this;
+    info.kitId = kit->id();
 
-      result << info;
+    result << info;
   }
 
   return result;

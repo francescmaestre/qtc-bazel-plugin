@@ -5,6 +5,12 @@
 
 namespace BazelProjectManager::Internal {
 
+class BazelRunConfigurationFactory : public ProjectExplorer::RunConfigurationFactory {
+public:
+  BazelRunConfigurationFactory();
+};
+
+
 /// This is responsible for setting up various "aspects" of runnable targets: executable path,
 /// command-line arguments, environment variables, etc. Those aspects shall also be automatically
 /// presented in the GUI for project run configurations.

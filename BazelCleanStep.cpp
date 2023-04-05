@@ -1,8 +1,22 @@
 #include "BazelCleanStep.h"
 
+#include <projectexplorer/projectexplorerconstants.h>
+
+// Own
+#include "plugin_constants.h"
+
+
 namespace BazelProjectManager::Internal {
 
 const char BazelCleanStep::STEP_ID[] = "BazelProjectManager.CleanStep";
+
+BazelCleanStepFactory::BazelCleanStepFactory() {
+  registerStep<BazelCleanStep>(BazelCleanStep::STEP_ID);
+  setDisplayName(BazelCleanStep::tr("Bazel Clean"));
+  setSupportedProjectType(Constants::Project::ID);
+  setSupportedStepList(ProjectExplorer::Constants::BUILDSTEPS_CLEAN);
+}
+
 
 BazelCleanStep::BazelCleanStep(ProjectExplorer::BuildStepList* bsl, Utils::Id id)
   : AbstractProcessStep(bsl, id) {

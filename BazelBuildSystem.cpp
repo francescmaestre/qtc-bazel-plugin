@@ -6,7 +6,6 @@
 
 #include "BazelWorkspace.h"
 #include "BazelProject.h"
-#include "bazel_helpers.h"
 #include "logging.h"
 
 

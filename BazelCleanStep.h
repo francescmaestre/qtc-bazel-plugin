@@ -6,6 +6,14 @@
 
 namespace BazelProjectManager::Internal {
 
+/// Registers a "clean" step type which invokes Bazel cleanup.
+/// This step will become available on the IDE's project setup pane.
+class BazelCleanStepFactory final : public ProjectExplorer::BuildStepFactory {
+public:
+  BazelCleanStepFactory();
+};
+
+
 /// This implements the invokation of Bazel process to perform a build action on some target.
 class BazelCleanStep final : public ProjectExplorer::AbstractProcessStep
 {

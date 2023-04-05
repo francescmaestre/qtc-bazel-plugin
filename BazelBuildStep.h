@@ -11,6 +11,14 @@ class CommandLine;
 
 namespace BazelProjectManager::Internal {
 
+/// Registers a "build" step type which invokes Bazel build.
+/// This step will become available on the IDE's project setup pane.
+class BazelBuildStepFactory final : public ProjectExplorer::BuildStepFactory {
+public:
+  BazelBuildStepFactory();
+};
+
+
 /// This implements the invokation of Bazel process to perform the build action on some targets.
 class BazelBuildStep final : public ProjectExplorer::AbstractProcessStep
 {

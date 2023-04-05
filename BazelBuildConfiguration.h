@@ -17,7 +17,7 @@ enum class BazelCompilationMode
 };
 
 
-/// Manages build parameters and steps for a Bazel-bazed project.
+/// Manages build parameters and creates initial build/run steps for a Bazel-bazed project.
 class BazelBuildConfiguration final : public ProjectExplorer::BuildConfiguration {
 public:
   /// Designated ctor. Called by the IDE to handle a project of the corresponding mime type.
@@ -38,18 +38,19 @@ private:
 };
 
 
-/// This registers BazelBuildConfiguration as the new build configuration type.
+/// This registers BazelBuildConfiguration and associates it with the type appropriate project type.
 class BazelBuildConfigurationFactory final : public ProjectExplorer::BuildConfigurationFactory
 {
 public:
-    BazelBuildConfigurationFactory();
+  BazelBuildConfigurationFactory();
 
 private:
-    /// Provides info about the supported build modes.
-    /// @see ProjectExplorer::BuildConfigurationFactory::BuildGenerator
-    QList<ProjectExplorer::BuildInfo> generateBuild(
-      const ProjectExplorer::Kit* kit, const Utils::FilePath& projectPath, bool forSetup
-    );
+  /// Provides info about the supported build modes.
+  /// Will be called by the IDE to generate a new build for Bazel projects.
+  /// @see ProjectExplorer::BuildConfigurationFactory::BuildGenerator
+  QList<ProjectExplorer::BuildInfo> generateBuild(
+    const ProjectExplorer::Kit* kit, const Utils::FilePath& projectPath, bool forSetup
+  );
 };
 
 
