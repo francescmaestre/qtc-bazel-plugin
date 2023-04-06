@@ -87,10 +87,11 @@ QVariantMap BazelBuildStep::toMap() const
 QWidget* BazelBuildStep::createConfigWidget()
 {
   const auto* bazelProject = static_cast<BazelProject*>(target()->project());
+  assert(bazelProject);
 
   auto widget = std::make_unique<BazelBuildStepConfigWidget>();
-  // At this moment `bazelProject->workspace()` is null.
-  widget->setProjectData(nullptr, buildFlags_, buildTargets_);
+  // At some moments `bazelProject->workspace()` may be null but that's OK.
+  widget->setProjectData(bazelProject->workspace(), buildFlags_, buildTargets_);
 
   connect(
     bazelProject, &BazelProject::projectScanComplete,
@@ -99,6 +100,7 @@ QWidget* BazelBuildStep::createConfigWidget()
     }
   );
 
+  // Observe UI changes and update the resulting command line.
   connect(
     widget.get(), &BazelBuildStepConfigWidget::buildFlagsChanged,
     this, [this](const QString& flags) {
