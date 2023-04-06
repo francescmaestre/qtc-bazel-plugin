@@ -1,5 +1,7 @@
 # This file contains project's global compiler/linker settings.
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS YES)
+
 set(CMAKE_CXX_STANDARD 17)
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
