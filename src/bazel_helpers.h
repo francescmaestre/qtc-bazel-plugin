@@ -12,10 +12,7 @@
 #include <QFileInfo>
 
 // Bazel
-#include <3rd_party/bazel/src/main/protobuf/build.pb.h>
-
-// own
-#include <bazel_api_export.h>
+#include <bazel/src/main/protobuf/build.pb.h>
 
 
 namespace BazelProjectManager::Internal {
@@ -23,7 +20,7 @@ namespace BazelProjectManager::Internal {
 /// Helps to parse Bazel label strings into components.
 /// NB: This class makes no data copies and only returns references to the original string!
 /// This means the source data must outlive instances of this class.
-struct BAZEL_API_EXPORT BazelLabel {
+struct BazelLabel {
   static std::optional<BazelLabel> parse(const std::string& label);
 
   /// Repository spec. Starts with '@'!
@@ -52,7 +49,7 @@ private:
 
 /// Contains references to interesting attributes of Bazel rules.
 /// WARNING: This struct is NON-OWNING and stores mostly just references!
-struct BAZEL_API_EXPORT RuleAttributeRefs {
+struct RuleAttributeRefs {
 private:
   using StringValueListType = std::remove_reference_t<
     decltype(std::declval<blaze_query::Attribute>().string_list_value())

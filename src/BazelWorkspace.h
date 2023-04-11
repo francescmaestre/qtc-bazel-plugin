@@ -16,7 +16,7 @@
 #include <projectexplorer/rawprojectpart.h>
 
 // own
-#include <bazelprojectmanager_export.h>
+#include <bazelpm_export.h>
 
 
 namespace BazelProjectManager::Internal {
@@ -41,7 +41,7 @@ bool operator<(const BuildTarget& left, const BuildTarget& right);
 
 
 /// Models a Bazel workspace structure, consisting of a tree of packages.
-class BAZELPROJECTMANAGER_EXPORT BazelWorkspace {
+class BAZELPM_EXPORT BazelWorkspace {
 public:
   explicit BazelWorkspace(Utils::FilePath workspaceDirPath);
 
@@ -74,7 +74,7 @@ private:
 
 
 /// Models a tree of sub-directories and their buildable targets with inputs and outputs.
-class BAZELPROJECTMANAGER_EXPORT ProjectSubDirectory
+class BAZELPM_EXPORT ProjectSubDirectory
   : public std::enable_shared_from_this<ProjectSubDirectory> {
 public:
   /// Construct a "root" package - i.e. one not really explicitly existing as a Bazel BUILD file.
