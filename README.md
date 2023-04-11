@@ -17,12 +17,10 @@ This plugin adds Bazel project management support to QtCreator.
 ### Dependencies
 
 - Install Conan package manager
-- Fetch external source code as shown below:
+- Fetch third-party submodules running the prepared script as shown below:
 
 ```sh
-git -C 3rd_party/bazel config core.sparseCheckout true
-cp 3rd_party/bazel_sparse-checkout.txt .git/modules/3rd_party/bazel/info/sparse-checkout
-git submodule update --force --checkout 3rd_party/bazel
+./update_submodules.sh
 ```
 
 ### Configure and start the build
