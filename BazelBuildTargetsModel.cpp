@@ -134,11 +134,15 @@ BuildSetInfo parseBuildSet(const QStringList& initialBuildExpressions) {
   return result;
 }
 
-std::unique_ptr<QStandardItem> buildModelItems(
+/// Creates a model item corresponding to the given subdirectory, as well as all its children,
+/// recursively.
+/// @arg subdirectory - project subdirectory to create an item for.
+/// @arg initialBuildSet - build set used to mark the items (uncheked/checked/partially)
+std::unique_ptr<QStandardItem> buildModelItem(
   std::shared_ptr<const ProjectSubDirectory> subdirectory,
   const BuildSetInfo& initialBuildSet
 ) {
-  const bool allChecked = [&subdirectory, &initialBuildSet]() {
+  const bool dirInBuildSet = [&subdirectory, &initialBuildSet]() {
     for (const auto& [packageDirPath, _] : initialBuildSet) {
       if (subdirectory->isConsumedBy(packageDirPath))
         return true;
@@ -157,8 +161,8 @@ std::unique_ptr<QStandardItem> buildModelItems(
   }();
   const auto subPackagesBuildSetIter = initialBuildSet.find(subdirectory->dirPath() + "/...");
 
-  bool buildAllImmediateChildren = allChecked;
-  bool buildAllSubPackages =
+  bool markAllImmediateChildren = dirInBuildSet;
+  bool markAllSubPackages =
     subPackagesBuildSetIter != initialBuildSet.end()
     && subPackagesBuildSetIter->second.count("all");
 
@@ -167,12 +171,12 @@ std::unique_ptr<QStandardItem> buildModelItems(
   auto packageItem = std::make_unique<BazelPackageItem>(subdirectory);
 
   // TODO: Support alternative syntaxes.
-  if (allChecked || buildAllSubPackages || selectedTargets.find("all") != selectedTargets.end()) {
+  if (dirInBuildSet || markAllSubPackages || selectedTargets.count("all")) {
     // Disallow changes to items selected implicitly by the parent.
-    const bool disableItem = allChecked && subdirectory->hasParent();
+    const bool disableItem = dirInBuildSet && subdirectory->hasParent();
     packageItem->setEnabled(!disableItem);
     packageItem->setCheckState(Qt::CheckState::Checked);
-    buildAllImmediateChildren = true;
+    markAllImmediateChildren = true;
   }
 
   // Create leaf target items.
@@ -180,7 +184,7 @@ std::unique_ptr<QStandardItem> buildModelItems(
     auto targetItem = std::make_unique<BazelTargetItem>(target);
 
     const auto& targetLabel = target.buildTargetInfo.buildKey;
-    if (buildAllImmediateChildren || selectedTargets.find(targetLabel) != selectedTargets.end()) {
+    if (markAllImmediateChildren || selectedTargets.count(targetLabel)) {
       targetItem->setEnabled(false);
       targetItem->setCheckState(Qt::CheckState::Checked);
     }
@@ -190,7 +194,7 @@ std::unique_ptr<QStandardItem> buildModelItems(
 
   // Add subpackages recursively.
   for (const auto& [name, subdir] : subdirectory->subDirectories()) {
-    packageItem->appendRow(buildModelItems(subdir, initialBuildSet).release());
+    packageItem->appendRow(buildModelItem(subdir, initialBuildSet).release());
   }
 
   return std::move(packageItem);
@@ -219,7 +223,7 @@ const BazelWorkspace* projectWorkspace, const QStringList& initialBuildExpressio
   if (projectWorkspace) {
     const auto& initialBuildSet = parseBuildSet(initialBuildExpressions);
     invisibleRootItem()->appendRow(
-      buildModelItems(projectWorkspace->rootPackage(), initialBuildSet).release()
+        buildModelItem(projectWorkspace->rootPackage(), initialBuildSet).release()
     );
     return;
   }
