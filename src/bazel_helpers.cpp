@@ -169,4 +169,18 @@ blaze_query::QueryResult queryPackage(
   return bazelQuery(workspaceDir, QString{"kind(\"(%1)\", //%2:*)"}.arg(kindsExpr, packageDirPath));
 }
 
+QStringView compileModeToCLIArg(BazelCompilationMode mode) {
+  static const QStringView fastbuild = u"fastbuild";
+  static const QStringView dbg = u"dbg";
+  static const QStringView opt = u"opt";
+
+  switch (mode) {
+    case BazelCompilationMode::Fast: return fastbuild;
+    case BazelCompilationMode::Dbg: return dbg;
+    case BazelCompilationMode::Opt: return opt;
+    case BazelCompilationMode::CompileMode_LAST: break;
+  }
+  return fastbuild;
+}
+
 }  // namespace BazelProjectManager::Internal

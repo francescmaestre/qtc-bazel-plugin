@@ -72,6 +72,19 @@ blaze_query::QueryResult bazelQuery(
 );
 
 
+enum class BazelCompilationMode: char{
+  Fast,
+  Dbg,
+  Opt,
+
+  CompileMode_LAST
+};
+
+
+/// @returns CLI argument value corresponding to the compilation mode.
+QStringView compileModeToCLIArg(BazelCompilationMode mode);
+
+
 enum class QueryTargetKind: char {
   Rule          = 1 << ::blaze_query::Target::Discriminator::Target_Discriminator_RULE,
   SourceFile    = 1 << ::blaze_query::Target::Discriminator::Target_Discriminator_SOURCE_FILE,

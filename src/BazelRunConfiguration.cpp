@@ -5,11 +5,12 @@
 #include <projectexplorer/localenvironmentaspect.h>
 #include <projectexplorer/projectexplorerconstants.h>
 #include <projectexplorer/runconfigurationaspects.h>
+#include <projectexplorer/runcontrol.h>
 #include <projectexplorer/target.h>
-#include <utils/environment.h>
-#include <utils/hostosinfo.h>
+#include <utils/aspects.h>
 
 // Own
+#include "BazelBuildConfiguration.h"
 #include "plugin_constants.h"
 
 
@@ -33,15 +34,22 @@ BazelRunConfigurationFactory::BazelRunConfigurationFactory()
 BazelRunConfiguration::BazelRunConfiguration(Target* target, Utils::Id id)
   : ProjectExplorer::RunConfiguration(target, id) {
 
-  auto* const envAspect = addAspect<LocalEnvironmentAspect>(target);
-  addAspect<WorkingDirectoryAspect>(macroExpander(), envAspect);
-  addAspect<ExecutableAspect>(target, ExecutableAspect::RunDevice);
+  auto* const targetIdAspect = addAspect<Utils::StringAspect>();
+  targetIdAspect->setLabelText(tr("Target:"));
   addAspect<ArgumentsAspect>(macroExpander());
   addAspect<TerminalAspect>();
 
   setUpdater([this] { updateTargetInformation(); });
+  setCommandLineGetter(std::bind(&BazelRunConfiguration::makeCommandLine, this));
 
   connect(target, &Target::buildSystemUpdated, this, &RunConfiguration::update);
+}
+
+ProjectExplorer::Runnable BazelRunConfiguration::runnable() const {
+  auto runnable = RunConfiguration::runnable();
+  // Bazel has to be run from withing the workspace directory.
+  runnable.workingDirectory = project()->rootProjectDirectory();
+  return std::move(runnable);
 }
 
 void BazelRunConfiguration::updateTargetInformation() {
@@ -51,11 +59,37 @@ void BazelRunConfiguration::updateTargetInformation() {
   const BuildTargetInfo& bti = buildTargetInfo();
   setDefaultDisplayName(bti.displayName);
 
+  auto* const targetIdAspect = aspect<Utils::StringAspect>();
+  targetIdAspect->setValue(bti.buildKey);
   aspect<TerminalAspect>()->setUseTerminalHint(bti.usesTerminal);
-  aspect<ExecutableAspect>()->setExecutable(bti.targetFilePath);
-  aspect<WorkingDirectoryAspect>()->setDefaultWorkingDirectory(bti.workingDirectory);
+}
 
-  emit aspect<LocalEnvironmentAspect>()->environmentChanged();
+Utils::CommandLine BazelRunConfiguration::makeCommandLine() {
+  // We delegate launching the target to Bazel. This is required because it needs to set up
+  // "run-files" and stuff.
+  Utils::CommandLine cmd{"bazel"};
+  const BuildTargetInfo bti = buildTargetInfo();
+  cmd.addArgs({"run", bti.buildKey});  // `buildKey` is the Bazel binary target id.
+
+  if (auto* proj = project(); proj && proj->activeTarget()) {
+    // NOTE: Alt. way to obtain this is via `activeBuildSystem()->buildConfiguration()` but this
+    // will yield nullptr since BazelBuildConfiguration is constructed from a Target (see ctor)!
+    const auto* const buildConf =
+        static_cast<BazelBuildConfiguration*>(proj->activeTarget()->activeBuildConfiguration());
+    if (buildConf) {
+      cmd.addArgs({
+        "--compilation_mode",
+        compileModeToCLIArg(buildConf->compileMode()).toString()
+      });
+    }
+  }
+  // TODO: Support passing extra arguments to Bazel itself.
+
+  // Passed user-specified arguments to the target.
+  cmd.addArgs({"--"});
+  cmd.addArgs(aspect<ArgumentsAspect>()->arguments(), Utils::CommandLine::Raw);
+
+  return cmd;
 }
 
 }  // namespace BazelProjectManager::Internal

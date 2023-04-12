@@ -5,17 +5,10 @@
 #include <projectexplorer/buildinfo.h>
 #include <projectexplorer/buildconfiguration.h>
 
+#include "bazel_helpers.h"
+
+
 namespace BazelProjectManager::Internal {
-
-enum class BazelCompilationMode
-{
-  Fast,
-  Dbg,
-  Opt,
-
-  CompileMode_LAST
-};
-
 
 /// Manages build parameters and creates initial build/run steps for a Bazel-bazed project.
 class BazelBuildConfiguration final : public ProjectExplorer::BuildConfiguration {

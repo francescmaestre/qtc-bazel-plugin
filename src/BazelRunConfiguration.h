@@ -16,13 +16,21 @@ public:
 /// presented in the GUI for project run configurations.
 class BazelRunConfiguration : public ProjectExplorer::RunConfiguration {
 public:
+  static const char ID[];
+
   /// Once registered, used by the IDE to construct run configuration for one of the build targets.
   BazelRunConfiguration(ProjectExplorer::Target* target, Utils::Id id);
 
-  static const char ID[];
+  /// Returns a \l Runnable described by this RunConfiguration.
+  ProjectExplorer::Runnable runnable() const override;
 
 private:
+  /// Updates run configuration from its `BuildTargetInfo`.
+  /// Called whenever `RunConfiguration::update` is called.
   void updateTargetInformation();
+
+  /// Prepares an actual launch command line corresponding to the selected build target.
+  Utils::CommandLine makeCommandLine();
 };
 
 }  // namespace BazelProjectManager::Internal

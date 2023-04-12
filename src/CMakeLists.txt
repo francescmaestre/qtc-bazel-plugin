@@ -138,8 +138,12 @@ set_target_properties(
 )
 target_link_libraries(
   building
-  PRIVATE bazel_helpers common
-  PUBLIC ${QtX}::Widgets QtCreator::Core
+  PRIVATE
+    common
+  PUBLIC
+    ${QtX}::Widgets
+    QtCreator::Core
+    bazel_helpers
 )
 target_include_directories(building INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -157,8 +161,12 @@ add_qtc_library(
 )
 target_link_libraries(
   running
-  PRIVATE common
-  PUBLIC QtCreator::Core QtCreator::ProjectExplorer
+  PRIVATE
+    common
+    building
+  PUBLIC
+    QtCreator::Core
+    QtCreator::ProjectExplorer
 )
 target_include_directories(running INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 

@@ -43,16 +43,7 @@ BazelBuildStep::BazelBuildStep(ProjectExplorer::BuildStepList* bsl, Utils::Id id
   : ProjectExplorer::AbstractProcessStep(bsl, id)
 {
   const auto* const buildConfig = static_cast<BazelBuildConfiguration*>(this->buildConfiguration());
-  buildFlags_ = "--compilation_mode " + [buildConfig]() -> QString {
-    switch (buildConfig->compileMode()) {
-      case BazelCompilationMode::Fast: return "fastbuild";
-      case BazelCompilationMode::Dbg: return "dbg";
-      case BazelCompilationMode::Opt: return "opt";
-      case BazelCompilationMode::CompileMode_LAST: break;
-    }
-    return "fast";
-  }();
-
+  buildFlags_ = "--compilation_mode " + compileModeToCLIArg(buildConfig->compileMode());
   buildTargets_ << "//...:all";  // Build all by default.
 
   setLowPriority();
