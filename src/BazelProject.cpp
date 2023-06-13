@@ -28,9 +28,6 @@ using namespace ProjectExplorer;
 const char BAZEL_WORKSPACE_FILE_NAME[] = "WORKSPACE";
 const char BAZEL_PACKAGE_BUILD_FILE_NAME[] = "BUILD";
 const char BAZEL_PACKAGE_BUILD_FILE_NAME_W_EXT[] = "BUILD.bazel";
-const char BUILD_ICON[] = ":/projectexplorer/images/build.png";
-const char PACKAGE_OVERLAY_ICON[] = ":/bazelprojectmanager/images/bazel-overlay-icon.png";
-const char BAZEL_ICON[] = ":/bazelprojectmanager/images/bazel-icon.png";
 
 
 /// Recursively fills the child content under a given project explorer node.
@@ -62,7 +59,7 @@ void buildExplorerFolderContents(
       workspace.rootPackage()->findSubPackage(folderRelativePath.toString());
   if (packageInThisFolder) {
     // TODO: Add overlay icong to the folderNode.
-    folderNode.setIcon(ProjectExplorer::DirectoryIcon(PACKAGE_OVERLAY_ICON));
+    folderNode.setIcon(ProjectExplorer::DirectoryIcon(Constants::Icons::PACKAGE_OVERLAY_ICON));
 
     // TODO: Add overlay icong to the BUILD file. Mark accordingly those with `packageContainsErrors`
 
@@ -70,7 +67,7 @@ void buildExplorerFolderContents(
     for (const auto& target : packageInThisFolder->targets()) {
       auto targetNode = std::make_unique<VirtualFolderNode>(folderNode.filePath());
       targetNode->setDisplayName(target.buildTargetInfo.displayName);
-      targetNode->setIcon(BUILD_ICON);  // Make it appear differently, not like just a directory.
+      targetNode->setIcon(Constants::Icons::BUILD_ICON);  // Make it appear differently.
 
       // List all target's sources and generated files.
       for (const QString& fileAbsPath : target.projectPart.files) {
@@ -108,7 +105,7 @@ void buildExplorerFolderContents(
     );
     if (isBazelFile) {
       buildFilePaths.insert(fileAbsPath);
-      fileNode->setIcon(QIcon{BAZEL_ICON});
+      fileNode->setIcon(QIcon{Constants::Icons::BAZEL_ICON});
     }
     folderNode.addNode(std::move(fileNode));
 
