@@ -1,11 +1,11 @@
 {
     \"Category\" : \"Build Systems\",
     \"Name\" : \"Bazel Project Manager\",
-    \"Version\" : \"0.0.2\",
+    \"Version\" : \"0.0.3\",
     \"CompatVersion\" : \"0.0.2\",
     \"Vendor\" : \"Max Breev\",
     \"Copyright\" : \"(C) Max Breev\",
-    \"License\" : \"BSD\",
+    \"License\" : \"MIT\",
     \"Description\" : \"Bazel build system support\",
     \"Url\" : \"https://bitbucket.org/knuckles/qtc-bazel-plugin/\",
     $$dependencyList,
