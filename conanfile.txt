@@ -3,5 +3,4 @@ catch2/2.13.7
 protobuf/3.17.1
 
 [generators]
-cmake_paths
-cmake_find_package
+CMakeToolchain

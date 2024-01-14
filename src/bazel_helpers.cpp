@@ -144,6 +144,10 @@ blaze_query::QueryResult bazelQuery(const QString& workspaceDir, const QString& 
 
   // TODO: Use some streaming instead of storing the entire output in memory.
   const auto& bazelOutput = bazelProc.readAllStandardOutput();
+
+  // if(!bazelErrorOutput.isEmpty())
+  // TODO: handle exit code errors e.g: non exsisting bazel, or bazel query errors
+
   blaze_query::QueryResult queryResult;
   if (!queryResult.ParseFromArray(bazelOutput.data(), bazelOutput.size())) {
     throw std::runtime_error("Could not parse bazel output.");

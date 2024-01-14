@@ -1,7 +1,6 @@
 #include "BazelPlugin.h"
 
 // Qt Creator API:
-#include <app/app_version.h>
 #include <coreplugin/icore.h>
 #include <coreplugin/icontext.h>
 #include <coreplugin/actionmanager/actionmanager.h>

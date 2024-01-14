@@ -1,6 +1,7 @@
 #pragma once
 
 #include <projectexplorer/runconfiguration.h>
+#include <projectexplorer/runconfigurationaspects.h>
 
 
 namespace BazelProjectManager::Internal {
@@ -22,7 +23,7 @@ public:
   BazelRunConfiguration(ProjectExplorer::Target* target, Utils::Id id);
 
   /// Returns a \l Runnable described by this RunConfiguration.
-  ProjectExplorer::Runnable runnable() const override;
+  Utils::ProcessRunData runnable() const override;
 
 private:
   /// Updates run configuration from its `BuildTargetInfo`.
@@ -31,6 +32,14 @@ private:
 
   /// Prepares an actual launch command line corresponding to the selected build target.
   Utils::CommandLine makeCommandLine();
+
+  /// Aspects are owned by BazelRunConfiguration. When created BaseAspect constructor registers
+  /// itself in the AspectContainer without AspectContainer taking ownership automatically.
+  /// registerAspect needs to be called explicitly or aspects need to be held as data members
+  /// like in this case
+  Utils::StringAspect stringAspect_{this};
+  ProjectExplorer::ArgumentsAspect argumentAspect_{this};
+  ProjectExplorer::TerminalAspect terminalAspect_{this};
 };
 
 }  // namespace BazelProjectManager::Internal

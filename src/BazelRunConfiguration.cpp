@@ -2,9 +2,8 @@
 
 // IDE
 #include <projectexplorer/buildsystem.h>
-#include <projectexplorer/localenvironmentaspect.h>
+#include <projectexplorer/environmentaspect.h>
 #include <projectexplorer/projectexplorerconstants.h>
-#include <projectexplorer/runconfigurationaspects.h>
 #include <projectexplorer/runcontrol.h>
 #include <projectexplorer/target.h>
 #include <utils/aspects.h>
@@ -12,6 +11,7 @@
 // Own
 #include "BazelBuildConfiguration.h"
 #include "plugin_constants.h"
+#include "utils/processinterface.h"
 
 
 namespace BazelProjectManager::Internal {
@@ -34,10 +34,8 @@ BazelRunConfigurationFactory::BazelRunConfigurationFactory()
 BazelRunConfiguration::BazelRunConfiguration(Target* target, Utils::Id id)
   : ProjectExplorer::RunConfiguration(target, id) {
 
-  auto* const targetIdAspect = addAspect<Utils::StringAspect>();
-  targetIdAspect->setLabelText(tr("Target:"));
-  addAspect<ArgumentsAspect>(macroExpander());
-  addAspect<TerminalAspect>();
+  stringAspect_.setLabelText(tr("Target:"));
+  argumentAspect_.setMacroExpander(macroExpander());
 
   setUpdater([this] { updateTargetInformation(); });
   setCommandLineGetter(std::bind(&BazelRunConfiguration::makeCommandLine, this));
@@ -45,11 +43,11 @@ BazelRunConfiguration::BazelRunConfiguration(Target* target, Utils::Id id)
   connect(target, &Target::buildSystemUpdated, this, &RunConfiguration::update);
 }
 
-ProjectExplorer::Runnable BazelRunConfiguration::runnable() const {
+Utils::ProcessRunData BazelRunConfiguration::runnable() const {
   auto runnable = RunConfiguration::runnable();
   // Bazel has to be run from withing the workspace directory.
   runnable.workingDirectory = project()->rootProjectDirectory();
-  return std::move(runnable);
+  return runnable;
 }
 
 void BazelRunConfiguration::updateTargetInformation() {
