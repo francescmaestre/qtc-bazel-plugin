@@ -1,0 +1,206 @@
+add_subdirectory(3rd_party)
+
+
+# Bazel helpers library.
+add_qtc_library(
+  bazel_helpers
+
+  STATIC
+  EXCLUDE_FROM_INSTALL
+
+  SOURCES
+  bazel_helpers.cpp
+  bazel_helpers.h
+)
+target_include_directories(
+  bazel_helpers
+
+  PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_link_libraries(
+  bazel_helpers
+
+  PUBLIC
+  bazel_api
+  ${QtX}::Core
+)
+
+
+# Just a POC tool to test Bazel's protobuf API
+if (NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+  # TODO: Use `add_qtc_executable`?
+  add_executable(qb qb.cpp)
+  target_link_libraries(qb PRIVATE bazel_helpers)
+endif()
+
+
+# Library with some general plugin utilities/constants.
+#
+# NOTE: Using `add_qtc_library` from QtCreatorAPI.cmake instead of `add_library` sets some extra
+# defines affecting QString API (`QT_RESTRICTED_CAST_FROM_ASCII` et al).
+# Otherwise the API behaviour would be different from the code in the target created with the
+# `add_qtc_plugin` function.
+add_qtc_library(
+  common
+
+  STATIC
+  EXCLUDE_FROM_INSTALL
+
+  SOURCES
+  logging.h
+  logging.cpp
+  plugin_constants.h
+)
+target_link_libraries(
+  common
+  PUBLIC ${QtX}::Core
+)
+generate_export_header(
+  common
+  BASE_NAME bazelpm
+)
+target_include_directories(common INTERFACE ${CMAKE_CURRENT_BINARY_DIR})
+
+
+# Library dealing with Bazel project parsing, model, and integration into IDE's project explorer.
+add_qtc_library(
+  project
+
+  STATIC
+  EXCLUDE_FROM_INSTALL
+
+  SOURCES
+  BazelProject.cpp
+  BazelProject.h
+
+  BazelBuildSystem.cpp
+  BazelBuildSystem.h
+
+  BazelProjectImporter.cpp
+  BazelProjectImporter.h
+
+  BazelWorkspace.cpp
+  BazelWorkspace.h
+)
+set_target_properties(
+  project
+
+  PROPERTIES
+    AUTOMOC ON
+)
+target_link_libraries(
+  project
+
+  PRIVATE
+  bazel_helpers
+
+  PUBLIC
+  common
+  QtCreator::Core
+  QtCreator::CppEditor
+  QtCreator::ProjectExplorer
+  QtCreator::QtSupport
+)
+target_include_directories(project INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+
+
+# Library supporting IDE build steps with Bazel.
+add_qtc_library(
+  building
+
+  STATIC
+  EXCLUDE_FROM_INSTALL
+
+  SOURCES
+  BazelBuildConfiguration.cpp
+  BazelBuildConfiguration.h
+
+  BazelBuildStep.cpp
+  BazelBuildStep.h
+
+  BazelBuildStepConfigWidget.cpp
+  BazelBuildStepConfigWidget.h
+  BazelBuildStepConfigWidget.ui
+
+  BazelBuildTargetsModel.cpp
+  BazelBuildTargetsModel.h
+
+  BazelCleanStep.cpp
+  BazelCleanStep.h
+)
+set_target_properties(
+  building
+
+  PROPERTIES
+    AUTOMOC ON
+    AUTOUIC ON
+)
+target_link_libraries(
+  building
+  PRIVATE
+    common
+  PUBLIC
+    ${QtX}::Widgets
+    QtCreator::Core
+    bazel_helpers
+)
+target_include_directories(building INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+
+
+# Library supporting running executable Bazel artefacts.
+add_qtc_library(
+  running
+
+  STATIC
+  EXCLUDE_FROM_INSTALL
+
+  SOURCES
+  BazelRunConfiguration.cpp
+  BazelRunConfiguration.h
+)
+target_link_libraries(
+  running
+  PRIVATE
+    common
+    building
+  PUBLIC
+    QtCreator::Core
+    QtCreator::ProjectExplorer
+)
+target_include_directories(running INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+
+
+# The plugin binary. This is the entry point for the IDE.
+add_qtc_plugin(
+  bazel_pm
+
+  PLUGIN_NAME BazelProjectManager
+
+  PLUGIN_DEPENDS
+  # Qt Creator plugins that this plugin depends on.
+  # This list shall be written into the JSON manifest in place of $$dependencyList.
+  QtCreator::Core
+  QtCreator::CppEditor
+  QtCreator::ProjectExplorer
+
+  DEPENDS  # Libraries that this binary depends on.
+
+  SOURCES
+  BazelProjectManager.json.in
+  resources.qrc
+  BazelPlugin.cpp
+  BazelPlugin.h
+)
+target_link_libraries(
+  bazel_pm
+
+  PRIVATE common project building running
+)
+set_target_properties(
+  bazel_pm
+
+  PROPERTIES
+    AUTOMOC ON
+    AUTORCC ON
+)

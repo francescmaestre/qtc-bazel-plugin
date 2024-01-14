@@ -1,18 +1,19 @@
-find_package(catch2 3 REQUIRED)
+find_package(Catch2 2.13 REQUIRED)
 
 
-add_executable(
-  helpers_test
+add_qtc_test(
+  plugin_tests
 
-  helpers_test.cpp
+  SOURCES
   test_main.cpp
+  bazel_workspace_test.cpp
 )
 target_link_libraries(
-  helpers_test
+  plugin_tests
 
   PRIVATE
   Catch2::Catch2
-  bazel_api
+  project
 )
 
 add_test(helpers_test helpers_test)
