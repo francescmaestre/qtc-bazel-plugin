@@ -3,6 +3,7 @@
 ## Description
 
 This plugin adds Bazel project management support to QtCreator.
+Feature request in Qt's issue tracker: https://bugreports.qt.io/browse/QTCREATORBUG-18426
 
 ## Features
 
