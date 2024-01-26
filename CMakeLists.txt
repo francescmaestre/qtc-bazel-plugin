@@ -8,7 +8,7 @@ include(compiler.cmake)
 include(utils.cmake)
 
 # Add support for Conan to be able to find the dependencies managed by it.
-include(${CMAKE_BINARY_DIR}/conan_paths.cmake)
+include(conan_setup.cmake)
 
 # Discover dependencies.
 find_package(QtCreator COMPONENTS Core REQUIRED)

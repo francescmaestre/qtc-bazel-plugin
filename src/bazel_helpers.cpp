@@ -132,6 +132,8 @@ blaze_query::QueryResult bazelQuery(const QString& workspaceDir, const QString& 
       "--keep_going",  // Don't abort on errors.
       "--relative_locations",
       "--noimplicit_deps",  // Don't care about toolchains and such. Yet.
+      // NB: There's a bug with ordering affecting all Bazel versions before 7.0:
+      // https://github.com/bazelbuild/bazel/issues/17087
       "--output", "proto",
       "--order_output", "deps",  // Default for `proto` output, yet make it  explicit.
       // "--proto:output_rule_attrs", "$is_executable",
