@@ -16,6 +16,15 @@ find_package(QT NAMES Qt6 COMPONENTS Widgets REQUIRED)
 set(QtX Qt${QT_VERSION_MAJOR})
 find_package(Protobuf REQUIRED)
 
+# Figure out the major version number of the taget IDE.
+if (IDE_VERSION MATCHES "^([0-9]*)\\.([0-9]*)")
+  set(IDE_VERSION_MAJOR ${CMAKE_MATCH_1})
+  set(IDE_VERSION_MINOR ${CMAKE_MATCH_2})
+  message(STATUS "Target IDE version numbers: ${IDE_VERSION_MAJOR} (major), ${IDE_VERSION_MINOR} (minor)")
+else()
+  message(FATAL_ERROR "Could not parse IDE version string '${IDE_VERSION}'")
+endif()
+
 # Figure out the install prefix based on the location of Qt Creator installation.
 strip_path_suffix("${QtCreator_DIR}" "${IDE_CMAKE_INSTALL_PATH}/QtCreator" CMAKE_INSTALL_PREFIX)
 message(STATUS "Install prefix: '${CMAKE_INSTALL_PREFIX}'")
