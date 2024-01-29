@@ -52,6 +52,12 @@ add_qtc_library(
   logging.cpp
   plugin_constants.h
 )
+target_compile_definitions(
+  common
+  INTERFACE
+    IDE_VERSION_MAJOR=${IDE_VERSION_MAJOR}
+    IDE_VERSION_MINOR=${IDE_VERSION_MINOR}
+)
 target_link_libraries(
   common
   PUBLIC ${QtX}::Core
