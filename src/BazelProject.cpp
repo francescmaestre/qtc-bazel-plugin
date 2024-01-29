@@ -8,9 +8,9 @@
 #include <projectexplorer/projectnodes.h>
 #include <projectexplorer/rawprojectpart.h>
 #include <projectexplorer/target.h>
+#include <utils/async.h>
 #include <utils/filepath.h>
 #include <utils/qtcassert.h>
-#include <utils/runextensions.h>
 
 #include "BazelBuildSystem.h"
 #include "BazelWorkspace.h"
@@ -45,7 +45,7 @@ void buildExplorerFolderContents(
     FolderNode& folderNode,
     QSet<Utils::FilePath>& buildFilePaths,
     ProjectExplorer::RawProjectPart& unknownSourcesPart,
-    QFutureInterface<void>& futureInterface
+    QPromise<void>& futureInterface
 ) {
   if (futureInterface.isCanceled()) {
     return;
@@ -190,9 +190,9 @@ void BazelProject::startProjectStructureUpdate() {
     return;
   }
 
-  scanFuture_ = Utils::runAsync(
+  scanFuture_ = Utils::asyncRun(
     ProjectExplorerPlugin::sharedThreadPool(),
-    [this] (QFutureInterface<void>& futureInterface) -> void {
+    [this] (QPromise<void>& futureInterface) -> void {
       try {
         // This will query Bazel for all targets in the workspace and build a tree structure of
         // packages and targets.

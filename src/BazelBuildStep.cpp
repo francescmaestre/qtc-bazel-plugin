@@ -55,24 +55,22 @@ BazelBuildStep::BazelBuildStep(ProjectExplorer::BuildStepList* bsl, Utils::Id id
   updateCommandLine();
 }
 
-bool BazelBuildStep::fromMap(const QVariantMap& map)
+void BazelBuildStep::fromMap(const Utils::Store &map)
 {
-  if (!AbstractProcessStep::fromMap(map))
-    return false;
+  AbstractProcessStep::fromMap(map);
 
   buildFlags_ = map.value(CONFIG_KEY_CMD_FLAGS).toString();
   buildTargets_ = map.value(CONFIG_KEY_TARGETS).toStringList();
   updateCommandLine();
 
-  return true;
+  return;
 }
 
-QVariantMap BazelBuildStep::toMap() const
+void BazelBuildStep::toMap(Utils::Store &map) const
 {
-  QVariantMap map = AbstractProcessStep::toMap();
+  AbstractProcessStep::toMap(map);
   map.insert(CONFIG_KEY_CMD_FLAGS, buildFlags_);
   map.insert(CONFIG_KEY_TARGETS, buildTargets_);
-  return map;
 }
 
 QWidget* BazelBuildStep::createConfigWidget()

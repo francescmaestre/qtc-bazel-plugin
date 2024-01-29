@@ -1,23 +1,23 @@
 {
-    \"Category\" : \"Build Systems\",
-    \"Name\" : \"Bazel Project Manager\",
-    \"Version\" : \"0.0.3\",
-    \"CompatVersion\" : \"0.0.2\",
-    \"Vendor\" : \"Max Breev\",
-    \"Copyright\" : \"(C) Max Breev\",
-    \"License\" : \"MIT\",
-    \"Description\" : \"Bazel build system support\",
-    \"Url\" : \"https://bitbucket.org/knuckles/qtc-bazel-plugin/\",
-    $$dependencyList,
+    "Category" :  "Build Systems",
+    "Name" :  "Bazel Project Manager",
+    "Version" :  "0.0.3",
+    "CompatVersion" :  "0.0.2",
+    "Vendor" :  "Max Breev",
+    "Copyright" :  "(C) Max Breev",
+    "License" :  "MIT",
+    "Description" :  "Bazel build system support",
+    "Url" :  "https://bitbucket.org/knuckles/qtc-bazel-plugin/",
 
-    \"Mimetypes\" : [
-        \"<?xml version=\'1.0\'?>\",
-        \"<mime-info xmlns=\'http://www.freedesktop.org/standards/shared-mime-info\'>\",
-        \"  <mime-type type=\'text/x-bazel\'>\",
-        \"    <comment>Bazel workspace file</comment>\",
-        \"    <glob pattern=\'WORKSPACE.bazel\'/>\",
-        \"    <glob pattern=\'WORKSPACE\'/>\",
-        \"  </mime-type>\",
-        \"</mime-info>\"
-    ]
+    "Mimetypes" : [
+    "<?xml version= '1.0'?>",
+    "<mime-info xmlns= 'http://www.freedesktop.org/standards/shared-mime-info'>",
+    "  <mime-type type= 'text/x-bazel'>",
+    "    <comment>Bazel workspace file</comment>",
+    "    <glob pattern= 'WORKSPACE.bazel'/>",
+    "    <glob pattern= 'WORKSPACE'/>",
+    "  </mime-type>",
+    "</mime-info>"
+    ],
+    ${IDE_PLUGIN_DEPENDENCIES}
 }
