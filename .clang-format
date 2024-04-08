@@ -1,0 +1,39 @@
+BasedOnStyle: Chromium
+ColumnLimit: 100
+IndentWidth: 2
+ContinuationIndentWidth: 2
+BracedInitializerIndentWidth: 2
+ConstructorInitializerIndentWidth: 2
+AccessModifierOffset: -2
+MaxEmptyLinesToKeep: 2
+AlignConsecutiveAssignments: Consecutive
+AlignOperands: DontAlign
+AlignAfterOpenBracket: BlockIndent
+AlignArrayOfStructures: Right
+BreakBeforeBraces: Custom
+BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: BeforeComma
+BraceWrapping:
+  AfterCaseLabel: false
+  AfterClass: false
+  AfterEnum: false
+  AfterFunction: false
+  AfterNamespace: false
+  AfterStruct: false
+  AfterUnion: false
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: false
+  BeforeWhile: true
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
+EmptyLineBeforeAccessModifier: LogicalBlock
+PackConstructorInitializers: NextLineOnly
+FixNamespaceComments: true
+BinPackArguments: false
