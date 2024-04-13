@@ -27,14 +27,14 @@ ProjectExplorer::BuildTargetInfo createBuildTarget(
     throw std::runtime_error{"Could not parse target's label: " + bazelRule.name()};
 
   ProjectExplorer::BuildTargetInfo targetInfo;
-  targetInfo.buildKey = part.buildSystemTarget;
-  targetInfo.displayName = part.displayName;
+  targetInfo.buildKey        = part.buildSystemTarget;
+  targetInfo.displayName     = part.displayName;
   targetInfo.projectFilePath = Utils::FilePath::fromString(part.projectFile);
   // Runnable targets shall be picked up by the IDE and presented in the run menu for selection.
   targetInfo.isQtcRunnable = part.buildTargetType == BuildTargetType::Executable;
   if (bazelRule.rule_output_size()) {
     const auto& outputLabel = bazelRule.rule_output(0);  // We hope this is always the executable.
-    auto maybeParsedLabel = BazelLabel::parse(outputLabel);
+    auto maybeParsedLabel   = BazelLabel::parse(outputLabel);
     if (!maybeParsedLabel) {
       // TODO: qCWarning(BazelPluginLog) << "Unrecognized target output: " << outputLabel.c_str();
     }
@@ -44,16 +44,14 @@ ProjectExplorer::BuildTargetInfo createBuildTarget(
       // configurations, or the project model has to be kept in multiple instances - again, per
       // build configuration instance.
       targetInfo.targetFilePath =
-        workspaceDirPath
-        .pathAppended("bazel-bin")
-        .pathAppended(QString::fromUtf8(maybeParsedLabel->packageDirPathBA()))
-        .pathAppended(QString::fromUtf8(maybeParsedLabel->targetNameBA()));
+        workspaceDirPath.pathAppended("bazel-bin")
+          .pathAppended(QString::fromUtf8(maybeParsedLabel->packageDirPathBA()))
+          .pathAppended(QString::fromUtf8(maybeParsedLabel->targetNameBA()));
     }
   }
   if (targetInfo.isQtcRunnable && !targetInfo.targetFilePath.isEmpty()) {
-    targetInfo.workingDirectory = workspaceDirPath.pathAppended(
-      QString::fromUtf8(maybeParsedName->packageDirPathBA())
-    );
+    targetInfo.workingDirectory =
+      workspaceDirPath.pathAppended(QString::fromUtf8(maybeParsedName->packageDirPathBA()));
   }
 
   return targetInfo;
@@ -78,12 +76,12 @@ ProjectExplorer::RawProjectPart createProjectPart(
     locationComponents.at(0),
     locationComponents.size() > 1 ? locationComponents.at(1).toInt() : -1,
     locationComponents.size() > 2 ? locationComponents.at(2).toInt() : -1
-    );
+  );
   part.buildSystemTarget = QString::fromStdString(bazelRule.name());
-  part.displayName = QString::fromUtf8(maybeParsedName->targetNameBA());
-  part.buildTargetType = attrRefs.is_executable
-    ? ProjectExplorer::BuildTargetType::Executable
-    : ProjectExplorer::BuildTargetType::Unknown;  // TODO: Would be nice to distinguish libraries.
+  part.displayName       = QString::fromUtf8(maybeParsedName->targetNameBA());
+  part.buildTargetType   = attrRefs.is_executable
+      ? ProjectExplorer::BuildTargetType::Executable
+      : ProjectExplorer::BuildTargetType::Unknown;  // TODO: Would be nice to distinguish libraries.
 
   // Bazel's convention is to always export include paths relative to the workspace root.
   part.headerPaths << HeaderPath{workspaceDirPath.toString(), HeaderPathType::User};
@@ -94,9 +92,9 @@ ProjectExplorer::RawProjectPart createProjectPart(
   // Collect input sources.
   for (int i = 0; i < bazelRule.rule_input_size(); ++i) {
     const auto& inputLabel = bazelRule.rule_input(i);
-    auto maybeParsedLabel = BazelLabel::parse(inputLabel);
+    auto maybeParsedLabel  = BazelLabel::parse(inputLabel);
     if (!maybeParsedLabel) {
-      //qCWarning(BazelPluginLog) << "Unrecognized target input: " << inputLabel.c_str();
+      // qCWarning(BazelPluginLog) << "Unrecognized target input: " << inputLabel.c_str();
       continue;
     }
 
@@ -105,9 +103,9 @@ ProjectExplorer::RawProjectPart createProjectPart(
     }
 
     const QString packageDirPath = QString::fromUtf8(maybeParsedLabel->packageDirPathBA());
-    const QString relFilePath = QString::fromUtf8(maybeParsedLabel->targetNameBA());
+    const QString relFilePath    = QString::fromUtf8(maybeParsedLabel->targetNameBA());
 
-    const Utils::FilePath absFilePath = workspaceDirPath/packageDirPath/relFilePath;
+    const Utils::FilePath absFilePath = workspaceDirPath / packageDirPath / relFilePath;
     if (!absFilePath.exists()) {
       continue;  // This way we filter out inputs which are non-files, or are non-existent.
     }
@@ -120,8 +118,7 @@ ProjectExplorer::RawProjectPart createProjectPart(
 
 
 void collectQueriedRules(
-    const blaze_query::QueryResult& rulesQueryResult,
-    ProjectSubDirectory& destRoot
+  const blaze_query::QueryResult& rulesQueryResult, ProjectSubDirectory& destRoot
 ) {
   const auto n_targets = rulesQueryResult.target_size();
 
@@ -137,12 +134,11 @@ void collectQueriedRules(
       throw std::runtime_error{"Could not parse target's label: " + bazelRule.name()};
     }
 
-    auto package = destRoot.addSubDirectories(
-      QString::fromUtf8(maybeParsedName->packageDirPathBA())
-    );
+    auto package =
+      destRoot.addSubDirectories(QString::fromUtf8(maybeParsedName->packageDirPathBA()));
     Q_ASSERT(package);
 
-    auto projectPart = createProjectPart(bazelRule, package->workspaceDirPath());
+    auto projectPart     = createProjectPart(bazelRule, package->workspaceDirPath());
     auto buildTargetInfo = createBuildTarget(bazelRule, projectPart, package->workspaceDirPath());
     package->placeTarget(BuildTarget{std::move(projectPart), std::move(buildTargetInfo)});
   }  // for
@@ -159,14 +155,13 @@ bool operator<(const BuildTarget& left, const BuildTarget& right) {
 
 
 BazelWorkspace::BazelWorkspace(Utils::FilePath workspaceDirPath)
-  : workspaceDirPath_{std::move(workspaceDirPath)},
-    // FIXME: What if workspace dir does not contain a package?
-    rootDir_{std::make_shared<ProjectSubDirectory>(this)}
-{
+  : workspaceDirPath_{std::move(workspaceDirPath)}
+  // FIXME: What if workspace dir does not contain a package?
+  , rootDir_{std::make_shared<ProjectSubDirectory>(this)} {
   {
     std::optional<ScopedStopwatchLogger> rulesQueryTimer("Querying targets");
     const auto& rulesQueryResult =
-        queryPackage(workspaceDirPath_.toString(), "...", QueryTargetKind::Rule);
+      queryPackage(workspaceDirPath_.toString(), "...", QueryTargetKind::Rule);
     rulesQueryTimer.reset();
 
     {
@@ -186,7 +181,7 @@ bool BazelWorkspace::isKnownSourceFile(const Utils::FilePath& filePath) const {
 ProjectExplorer::RawProjectParts BazelWorkspace::collectProjectParts() const {
   ProjectExplorer::RawProjectParts result;
 
-  using FillFuncType = std::function<void(const ProjectSubDirectory*)>;
+  using FillFuncType                  = std::function<void(const ProjectSubDirectory*)>;
   const FillFuncType fillProjectParts = [&](const ProjectSubDirectory* dir) {
     for (const auto& target : dir->targets()) {
       result.push_back(target.projectPart);
@@ -201,9 +196,9 @@ ProjectExplorer::RawProjectParts BazelWorkspace::collectProjectParts() const {
   return result;
 }
 
-QVector<ProjectExplorer::BuildTargetInfo>
-BazelWorkspace::collectBuildTargets(const BuildTargetKind kind) const
-{
+QVector<ProjectExplorer::BuildTargetInfo> BazelWorkspace::collectBuildTargets(
+  const BuildTargetKind kind
+) const {
   QVector<ProjectExplorer::BuildTargetInfo> result;
 
   std::function<void(const ProjectSubDirectory*)> fillRunnableTargets =
@@ -232,12 +227,11 @@ void BazelWorkspace::onBuildTargetAdded(const BuildTarget& target) {
 // --- ProjectSubDirectory ---
 
 ProjectSubDirectory::ProjectSubDirectory(BazelWorkspace* workspace)
-: workspace_{workspace}
-{}
+  : workspace_{workspace} {
+}
 
 ProjectSubDirectory::ProjectSubDirectory(const QStringView name)
-: name_{name.toString()}
-{
+  : name_{name.toString()} {
 }
 
 const QString& ProjectSubDirectory::name() const {
@@ -245,9 +239,9 @@ const QString& ProjectSubDirectory::name() const {
 }
 
 bool ProjectSubDirectory::isConsumedBy(const QStringView path) const {
-  constexpr auto ellipsisLen = 3;
+  constexpr auto ellipsisLen              = 3;
   static const QString subdirWildcardExpr = "/...";
-  static const QString rootPackageExpr = "//";
+  static const QString rootPackageExpr    = "//";
 
   if (!path.endsWith(subdirWildcardExpr))
     return false;
@@ -266,7 +260,7 @@ const QString& ProjectSubDirectory::bazelPath() const {
     auto lockedParent = parentDir_.lock();
     if (lockedParent) {
       const auto& parentPath = lockedParent->dirPath();
-      cachedBazelPath_ = "/" + parentPath + (parentPath.endsWith('/') ? "" : "/") + name();
+      cachedBazelPath_       = "/" + parentPath + (parentPath.endsWith('/') ? "" : "/") + name();
     }
     else {
       cachedBazelPath_ = "//";  // root package name must always be "//".
@@ -293,8 +287,9 @@ void ProjectSubDirectory::addSubDir(std::shared_ptr<ProjectSubDirectory> child) 
   child->parentDir_ = shared_from_this();
 }
 
-std::shared_ptr<ProjectSubDirectory>
-ProjectSubDirectory::addSubDirectories(const QStringView subDirPath) {
+std::shared_ptr<ProjectSubDirectory> ProjectSubDirectory::addSubDirectories(
+  const QStringView subDirPath
+) {
   std::shared_ptr<ProjectSubDirectory> lastAddedDir = shared_from_this();
 
   for (const QStringView subdirName : subDirPath.split('/', Qt::SkipEmptyParts)) {
@@ -309,8 +304,7 @@ ProjectSubDirectory::addSubDirectories(const QStringView subDirPath) {
   return lastAddedDir;
 }
 
-std::shared_ptr<ProjectSubDirectory>
-ProjectSubDirectory::findSubPackage(const QStringView path) {
+std::shared_ptr<ProjectSubDirectory> ProjectSubDirectory::findSubPackage(const QStringView path) {
   auto searchedParent = shared_from_this();
   for (const auto subdirName : path.split('/', Qt::SkipEmptyParts)) {
     // TODO: See if using string view as key is possible.

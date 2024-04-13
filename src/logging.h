@@ -5,8 +5,7 @@
 
 #include <QLoggingCategory>
 
-namespace BazelProjectManager::Internal
-{
+namespace BazelProjectManager::Internal {
 
 Q_DECLARE_LOGGING_CATEGORY(BazelPluginLog)
 

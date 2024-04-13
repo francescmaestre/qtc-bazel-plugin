@@ -25,8 +25,7 @@ void operator++(BazelCompilationMode& m)  // prefix form
   m = static_cast<BazelCompilationMode>(compileModeToInteger(m) + 1);
 }
 
-ProjectExplorer::BuildInfo createBuildInfo(BazelCompilationMode mode)
-{
+ProjectExplorer::BuildInfo createBuildInfo(BazelCompilationMode mode) {
   using ProjectExplorer::BuildConfiguration;
 
   ProjectExplorer::BuildInfo info;
@@ -34,23 +33,21 @@ ProjectExplorer::BuildInfo createBuildInfo(BazelCompilationMode mode)
 
   switch (mode) {
     case BazelCompilationMode::Fast:
-      info.typeName = "Fast";
+      info.typeName    = "Fast";
       info.displayName = BuildConfiguration::tr("Fast");
-      info.buildType = BuildConfiguration::Unknown;
+      info.buildType   = BuildConfiguration::Unknown;
       break;
     case BazelCompilationMode::Dbg:
-      info.typeName = "Debug";
+      info.typeName    = "Debug";
       info.displayName = BuildConfiguration::tr("Debug");
-      info.buildType = BuildConfiguration::Debug;
+      info.buildType   = BuildConfiguration::Debug;
       break;
     case BazelCompilationMode::Opt:
-      info.typeName = "Optimised";
+      info.typeName    = "Optimised";
       info.displayName = BuildConfiguration::tr("Optimised");
-      info.buildType = BuildConfiguration::Release;
+      info.buildType   = BuildConfiguration::Release;
       break;
-    default:
-      QTC_CHECK(false);
-      break;
+    default: QTC_CHECK(false); break;
   }
 
   return info;
@@ -69,24 +66,19 @@ BazelCompilationMode BazelBuildConfiguration::compileMode() const {
   // `buildType()` is the only way to provide this info to our build steps as they get created.
 
   switch (buildType()) {
-    case ProjectExplorer::BuildConfiguration::Unknown:
-      return BazelCompilationMode::Fast;
-    case ProjectExplorer::BuildConfiguration::Debug:
-      return BazelCompilationMode::Dbg;
-    case ProjectExplorer::BuildConfiguration::Release:
-      return BazelCompilationMode::Opt;
+    case ProjectExplorer::BuildConfiguration::Unknown: return BazelCompilationMode::Fast;
+    case ProjectExplorer::BuildConfiguration::Debug: return BazelCompilationMode::Dbg;
+    case ProjectExplorer::BuildConfiguration::Release: return BazelCompilationMode::Opt;
   }
   return BazelCompilationMode::Fast;
 }
 
-ProjectExplorer::NamedWidget* BazelBuildConfiguration::createConfigWidget()
-{
+ProjectExplorer::NamedWidget* BazelBuildConfiguration::createConfigWidget() {
   // TODO: Maybe provide selectors for commonly used compile flags.
   return nullptr;
 }
 
-BazelBuildConfigurationFactory::BazelBuildConfigurationFactory()
-{
+BazelBuildConfigurationFactory::BazelBuildConfigurationFactory() {
   registerBuildConfiguration<BazelBuildConfiguration>(BUILD_CONFIG_ID);
   setSupportedProjectType(Constants::Project::ID);
   setSupportedProjectMimeTypeName(Constants::Project::MIMETYPE);
@@ -99,18 +91,18 @@ BazelBuildConfigurationFactory::BazelBuildConfigurationFactory()
 
 QList<ProjectExplorer::BuildInfo> BazelBuildConfigurationFactory::generateBuild(
   const ProjectExplorer::Kit* kit, const Utils::FilePath& projectPath, bool forSetup
-)
-{
+) {
   Q_UNUSED(projectPath)
   Q_UNUSED(forSetup)
 
   using ProjectExplorer::BuildInfo;
   QList<BuildInfo> result;
 
-  for (auto mode = BazelCompilationMode::Fast; mode != BazelCompilationMode::CompileMode_LAST; ++mode) {
+  for (auto mode = BazelCompilationMode::Fast; mode != BazelCompilationMode::CompileMode_LAST;
+       ++mode) {
     BuildInfo info = createBuildInfo(mode);
-    info.factory = this;
-    info.kitId = kit->id();
+    info.factory   = this;
+    info.kitId     = kit->id();
 
     result << info;
   }

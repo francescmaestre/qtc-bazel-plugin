@@ -11,21 +11,19 @@
 #include <utils/filepath.h>
 
 // Own:
-#include "BazelWorkspace.h"
-#include "BazelProject.h"
 #include "BazelBuildConfiguration.h"
 #include "BazelBuildStepConfigWidget.h"
+#include "BazelProject.h"
+#include "BazelWorkspace.h"
 #include "plugin_constants.h"
 
-namespace
-{
-const char CONFIG_KEY_TARGETS[] = "BazelProjectManager.BuildStep.Targets";
+namespace {
+const char CONFIG_KEY_TARGETS[]   = "BazelProjectManager.BuildStep.Targets";
 const char CONFIG_KEY_CMD_FLAGS[] = "BazelProjectManager.BuildStep.CmdFlags";
 
 }  // namespace
 
-namespace BazelProjectManager::Internal
-{
+namespace BazelProjectManager::Internal {
 
 BazelBuildStepFactory::BazelBuildStepFactory() {
   registerStep<BazelBuildStep>(BazelBuildStep::STEP_ID);
@@ -40,8 +38,7 @@ BazelBuildStepFactory::BazelBuildStepFactory() {
 const char BazelBuildStep::STEP_ID[] = "BazelProjectManager.BuildStep";
 
 BazelBuildStep::BazelBuildStep(ProjectExplorer::BuildStepList* bsl, Utils::Id id)
-  : ProjectExplorer::AbstractProcessStep(bsl, id)
-{
+  : ProjectExplorer::AbstractProcessStep(bsl, id) {
   const auto* const buildConfig = static_cast<BazelBuildConfiguration*>(this->buildConfiguration());
   buildFlags_ = "--compilation_mode " + compileModeToCLIArg(buildConfig->compileMode());
   buildTargets_ << "//...:all";  // Build all by default.
@@ -55,26 +52,23 @@ BazelBuildStep::BazelBuildStep(ProjectExplorer::BuildStepList* bsl, Utils::Id id
   updateCommandLine();
 }
 
-void BazelBuildStep::fromMap(const Utils::Store &map)
-{
+void BazelBuildStep::fromMap(const Utils::Store& map) {
   AbstractProcessStep::fromMap(map);
 
-  buildFlags_ = map.value(CONFIG_KEY_CMD_FLAGS).toString();
+  buildFlags_   = map.value(CONFIG_KEY_CMD_FLAGS).toString();
   buildTargets_ = map.value(CONFIG_KEY_TARGETS).toStringList();
   updateCommandLine();
 
   return;
 }
 
-void BazelBuildStep::toMap(Utils::Store &map) const
-{
+void BazelBuildStep::toMap(Utils::Store& map) const {
   AbstractProcessStep::toMap(map);
   map.insert(CONFIG_KEY_CMD_FLAGS, buildFlags_);
   map.insert(CONFIG_KEY_TARGETS, buildTargets_);
 }
 
-QWidget* BazelBuildStep::createConfigWidget()
-{
+QWidget* BazelBuildStep::createConfigWidget() {
   const auto* bazelProject = static_cast<BazelProject*>(target()->project());
   assert(bazelProject);
 
@@ -83,23 +77,29 @@ QWidget* BazelBuildStep::createConfigWidget()
   widget->setProjectData(bazelProject->workspace(), buildFlags_, buildTargets_);
 
   connect(
-    bazelProject, &BazelProject::projectScanComplete,
-    widget.get(), [this, bazelProject, widget = widget.get()] {
+    bazelProject,
+    &BazelProject::projectScanComplete,
+    widget.get(),
+    [this, bazelProject, widget = widget.get()] {
       widget->setProjectData(bazelProject->workspace(), buildFlags_, buildTargets_);
     }
   );
 
   // Observe UI changes and update the resulting command line.
   connect(
-    widget.get(), &BazelBuildStepConfigWidget::buildFlagsChanged,
-    this, [this](const QString& flags) {
+    widget.get(),
+    &BazelBuildStepConfigWidget::buildFlagsChanged,
+    this,
+    [this](const QString& flags) {
       buildFlags_ = flags;
       updateCommandLine();
     }
   );
   connect(
-    widget.get(), &BazelBuildStepConfigWidget::buildSelectionChanged,
-    this, [this, widget = widget.get()]() {
+    widget.get(),
+    &BazelBuildStepConfigWidget::buildSelectionChanged,
+    this,
+    [this, widget = widget.get()]() {
       buildTargets_ = widget->buildExpressions();
       updateCommandLine();
     }
@@ -108,14 +108,12 @@ QWidget* BazelBuildStep::createConfigWidget()
   return widget.release();
 }
 
-void BazelBuildStep::buildArgsEdited(const QString& args)
-{
+void BazelBuildStep::buildArgsEdited(const QString& args) {
   buildFlags_ = args;
   updateCommandLine();
 }
 
-void BazelBuildStep::updateCommandLine()
-{
+void BazelBuildStep::updateCommandLine() {
   Utils::CommandLine cmd{Utils::FilePath::fromString("bazel")};
   cmd.addArg("build");
   cmd.addArgs(buildFlags_, Utils::CommandLine::Raw);

@@ -37,12 +37,11 @@ class BazelWorkspace;
 ///   NOTE: This should automatically check and disable all child items.
 /// - Dir "partially" checked: all rules immediately inside (`bazel build //<dir>:all`)
 ///
-class BazelBuildStepConfigWidget : public QWidget
-{
+class BazelBuildStepConfigWidget : public QWidget {
   Q_OBJECT
 
 public:
-  explicit BazelBuildStepConfigWidget(QWidget *parent = nullptr);
+  explicit BazelBuildStepConfigWidget(QWidget* parent = nullptr);
   ~BazelBuildStepConfigWidget();
 
   void setProjectData(

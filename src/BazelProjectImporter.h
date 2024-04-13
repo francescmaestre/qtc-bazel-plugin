@@ -9,8 +9,7 @@ namespace BazelProjectManager::Internal {
 ///
 /// An importer may be used to attempt to discover existing project configuration on the file
 /// system - e.g. in a conventionally named build directory nearby.
-class BazelProjectImporter final : public ProjectExplorer::ProjectImporter
-{
+class BazelProjectImporter final : public ProjectExplorer::ProjectImporter {
 public:
   explicit BazelProjectImporter(const Utils::FilePath& path);
 
@@ -19,9 +18,8 @@ public:
   Utils::FilePaths importCandidates() override;
 
 protected:
-  QList<void*> examineDirectory(
-    const Utils::FilePath& importPath, QString* warningMessage
-  ) const override;
+  QList<void*> examineDirectory(const Utils::FilePath& importPath, QString* warningMessage)
+    const override;
 
   bool matchKit(void* directoryData, const ProjectExplorer::Kit* k) const override;
 

@@ -23,8 +23,7 @@ public:
   /// @param projectWorkspace - the workspace to display.
   /// @param initialBuildExpressions - a list of active Bazel targets selection.
   void setProjectData(
-    const BazelWorkspace* projectWorkspace,
-    const QStringList& initialBuildExpressions
+    const BazelWorkspace* projectWorkspace, const QStringList& initialBuildExpressions
   );
 
   /// @returns a list of Bazel target expressions corresponding to the currently active selection.
@@ -35,7 +34,7 @@ signals:
   void buildSelectionChanged();
 
 private:
-  void onItemChanged(QStandardItem *item);
+  void onItemChanged(QStandardItem* item);
 
   std::set<const BazelBuildableItem*> selectedBuildables_;
 };

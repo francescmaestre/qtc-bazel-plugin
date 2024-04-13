@@ -8,21 +8,19 @@
 namespace BazelProjectManager::Internal {
 
 BazelBuildStepConfigWidget::BazelBuildStepConfigWidget(QWidget* parent)
-  : QWidget{parent},
-    ui_{std::make_unique<Ui::BazelBuildStepConfigWidget>()},
-    model_{std::make_unique<BazelBuildTargetsModel>()} {
+  : QWidget{parent}
+  , ui_{std::make_unique<Ui::BazelBuildStepConfigWidget>()}
+  , model_{std::make_unique<BazelBuildTargetsModel>()} {
   ui_->setupUi(this);
 
-  connect(
-    ui_->extraArgsLineEdit, &QLineEdit::textChanged,
-    this, [this](const QString& newText) { emit buildFlagsChanged(newText); }
-  );
+  connect(ui_->extraArgsLineEdit, &QLineEdit::textChanged, this, [this](const QString& newText) {
+    emit buildFlagsChanged(newText);
+  });
 
   auto* const modelPtr = static_cast<BazelBuildTargetsModel*>(model_.get());
-  connect(
-    modelPtr, &BazelBuildTargetsModel::buildSelectionChanged,
-    this, [this]() { emit buildSelectionChanged(); }
-  );
+  connect(modelPtr, &BazelBuildTargetsModel::buildSelectionChanged, this, [this]() {
+    emit buildSelectionChanged();
+  });
 
   ui_->targetsTreeView->setModel(model_.get());
 }

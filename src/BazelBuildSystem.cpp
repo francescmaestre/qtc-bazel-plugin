@@ -4,8 +4,8 @@
 #include <projectexplorer/buildconfiguration.h>
 #include <utils/filepath.h>
 
-#include "BazelWorkspace.h"
 #include "BazelProject.h"
+#include "BazelWorkspace.h"
 #include "logging.h"
 
 
@@ -27,8 +27,7 @@ void BazelBuildSystem::construct() {
 
   // Watch full project parse outcome.
   connect(
-    bazelProject(), &BazelProject::projectScanComplete,
-    this, &BazelBuildSystem::onTargetsParsed
+    bazelProject(), &BazelProject::projectScanComplete, this, &BazelBuildSystem::onTargetsParsed
   );
 
   if (!bazelProject()->projectScanned()) {
@@ -42,7 +41,6 @@ QString BazelBuildSystem::name() const {
 }
 
 void BazelBuildSystem::triggerParsing() {
-
   if (_parseGuard.guardsProject())
     return;
   _parseGuard = guardParsingRun();
@@ -55,11 +53,11 @@ void BazelBuildSystem::triggerParsing() {
     // those (e.g. paths of output executables).
     bazelProject()->startProjectStructureUpdate();
   }
-  catch(const std::exception& e) {
+  catch (const std::exception& e) {
     _parseGuard = {};
     qCWarning(BazelPluginLog) << "Could not start project scan: " << e.what();
   }
-  catch(...) {
+  catch (...) {
     _parseGuard = {};
     qCWarning(BazelPluginLog) << "Could not start project scan for unknown reason.";
   }

@@ -1,15 +1,12 @@
 #include "logging.h"
 
 
-namespace BazelProjectManager::Internal
-{
+namespace BazelProjectManager::Internal {
 
 Q_LOGGING_CATEGORY(BazelPluginLog, "qtc.bazel_plugin")
 
 ScopedStopwatchLogger::ScopedStopwatchLogger(std::string explanation)
-  : explanation_{std::move(explanation)},
-    startTime_{std::chrono::steady_clock::now()}
-{
+  : explanation_{std::move(explanation)}, startTime_{std::chrono::steady_clock::now()} {
 }
 
 ScopedStopwatchLogger::~ScopedStopwatchLogger() {
@@ -20,4 +17,4 @@ ScopedStopwatchLogger::~ScopedStopwatchLogger() {
   qCInfo(BazelPluginLog) << explanation_.c_str() << ": " << elapsedMillis.count() << "ms";
 }
 
-}
+}  // namespace BazelProjectManager::Internal

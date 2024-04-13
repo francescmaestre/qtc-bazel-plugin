@@ -30,8 +30,7 @@ QWidget* BazelCleanStep::createConfigWidget() {
   return nullptr;
 }
 
-void BazelCleanStep::updateCommandLine()
-{
+void BazelCleanStep::updateCommandLine() {
   Utils::CommandLine cmd{Utils::FilePath::fromString("bazel")};
   cmd.addArg("clean");
 

@@ -2,8 +2,8 @@
 
 #include <memory>
 
-#include <projectexplorer/buildinfo.h>
 #include <projectexplorer/buildconfiguration.h>
+#include <projectexplorer/buildinfo.h>
 
 #include "bazel_helpers.h"
 
@@ -32,8 +32,7 @@ private:
 
 
 /// This registers BazelBuildConfiguration and associates it with the type appropriate project type.
-class BazelBuildConfigurationFactory final : public ProjectExplorer::BuildConfigurationFactory
-{
+class BazelBuildConfigurationFactory final : public ProjectExplorer::BuildConfigurationFactory {
 public:
   BazelBuildConfigurationFactory();
 

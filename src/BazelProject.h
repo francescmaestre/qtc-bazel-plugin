@@ -27,7 +27,7 @@ class BazelWorkspace;
 /// Provides information about buildable, runnable, and deployable targets of the project.
 class BazelProject final : public ProjectExplorer::Project {
 public:
-  BazelProject(const Utils::FilePath &fileName);
+  BazelProject(const Utils::FilePath& fileName);
   ~BazelProject() override;
 
   /// @returns whether at least one successfull project scan has been complete.
@@ -75,10 +75,10 @@ private:
 
   /// Internal scan completion handler.
   void onScanComplete(
-      std::unique_ptr<BazelWorkspace> parsedWorkspace,
-      std::unique_ptr<ProjectExplorer::ProjectNode> parsedRootProjectNode,
-      QSet<Utils::FilePath> buildFilePaths,
-      ProjectExplorer::RawProjectPart unknownSourcesPart
+    std::unique_ptr<BazelWorkspace> parsedWorkspace,
+    std::unique_ptr<ProjectExplorer::ProjectNode> parsedRootProjectNode,
+    QSet<Utils::FilePath> buildFilePaths,
+    ProjectExplorer::RawProjectPart unknownSourcesPart
   );
 
   std::mutex scannerMutex_;  // Guards the project scanner from multiple invocations.

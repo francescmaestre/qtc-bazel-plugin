@@ -6,14 +6,14 @@
 #include <vector>
 
 // Qt
+#include <QFileInfo>
 #include <QString>
 #include <QStringView>
-#include <QFileInfo>
 
 // IDE
-#include <utils/filepath.h>
 #include <projectexplorer/buildtargetinfo.h>
 #include <projectexplorer/rawprojectpart.h>
+#include <utils/filepath.h>
 
 // own
 #include <bazelpm_export.h>

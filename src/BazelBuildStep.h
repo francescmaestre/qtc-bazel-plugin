@@ -4,8 +4,7 @@
 #include <projectexplorer/processparameters.h>
 
 
-namespace Utils
-{
+namespace Utils {
 class CommandLine;
 }
 
@@ -20,8 +19,7 @@ public:
 
 
 /// This implements the invokation of Bazel process to perform the build action on some targets.
-class BazelBuildStep final : public ProjectExplorer::AbstractProcessStep
-{
+class BazelBuildStep final : public ProjectExplorer::AbstractProcessStep {
 public:
   /// A designated ctor. Used by the IDE.
   BazelBuildStep(ProjectExplorer::BuildStepList* bsl, Utils::Id id);
@@ -29,10 +27,10 @@ public:
   // ProjectConfiguration interface:
 
   /// Load from the configuration.
-  void fromMap(const Utils::Store &map) override;
+  void fromMap(const Utils::Store& map) override;
 
   /// Store configuration.
-  void toMap(Utils::Store &map) const override;
+  void toMap(Utils::Store& map) const override;
 
   // BuildStep interface:
 

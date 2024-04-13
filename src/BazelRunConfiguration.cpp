@@ -33,7 +33,6 @@ BazelRunConfigurationFactory::BazelRunConfigurationFactory()
 
 BazelRunConfiguration::BazelRunConfiguration(Target* target, Utils::Id id)
   : ProjectExplorer::RunConfiguration(target, id) {
-
   stringAspect_.setLabelText(tr("Target:"));
   argumentAspect_.setMacroExpander(macroExpander());
 
@@ -52,7 +51,7 @@ Utils::ProcessRunData BazelRunConfiguration::runnable() const {
 
 void BazelRunConfiguration::updateTargetInformation() {
   if (!activeBuildSystem())
-      return;
+    return;
 
   const BuildTargetInfo& bti = buildTargetInfo();
   setDefaultDisplayName(bti.displayName);
@@ -73,12 +72,9 @@ Utils::CommandLine BazelRunConfiguration::makeCommandLine() {
     // NOTE: Alt. way to obtain this is via `activeBuildSystem()->buildConfiguration()` but this
     // will yield nullptr since BazelBuildConfiguration is constructed from a Target (see ctor)!
     const auto* const buildConf =
-        static_cast<BazelBuildConfiguration*>(proj->activeTarget()->activeBuildConfiguration());
+      static_cast<BazelBuildConfiguration*>(proj->activeTarget()->activeBuildConfiguration());
     if (buildConf) {
-      cmd.addArgs({
-        "--compilation_mode",
-        compileModeToCLIArg(buildConf->compileMode()).toString()
-      });
+      cmd.addArgs({"--compilation_mode", compileModeToCLIArg(buildConf->compileMode()).toString()});
     }
   }
   // TODO: Support passing extra arguments to Bazel itself.

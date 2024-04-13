@@ -8,8 +8,8 @@
 #include <utils/utilsicons.h>
 
 // Own
-#include "bazel_helpers.h"
 #include "BazelWorkspace.h"
+#include "bazel_helpers.h"
 #include "logging.h"
 
 
@@ -24,8 +24,7 @@ static const char ALL_TARGET[] = "all";
 class BazelBuildableItem : public QStandardItem {
 public:
   BazelBuildableItem(const QIcon& icon, const QString& text)
-    : QStandardItem{icon, text}
-  {
+    : QStandardItem{icon, text} {
     setCheckable(true);
   }
 
@@ -40,14 +39,11 @@ class BazelTargetItem : public BazelBuildableItem {
 public:
   BazelTargetItem(const BuildTarget& target)
     : BazelBuildableItem{Utils::Icons::PROJECT.icon(), target.buildTargetInfo.displayName}
-    , target_{target}
-  {
+    , target_{target} {
     setFlags(flags() | Qt::ItemNeverHasChildren);
   }
 
-  const QString buildExpression() const override {
-    return target_.buildTargetInfo.buildKey;
-  }
+  const QString buildExpression() const override { return target_.buildTargetInfo.buildKey; }
 
 private:
   const BuildTarget& target_;
@@ -57,9 +53,7 @@ private:
 class BazelPackageItem : public BazelBuildableItem {
 public:
   BazelPackageItem(std::shared_ptr<const ProjectSubDirectory> package)
-    : BazelBuildableItem{Utils::Icons::OPENFILE.icon(), package->name()}
-    , package_{package}
-  {
+    : BazelBuildableItem{Utils::Icons::OPENFILE.icon(), package->name()}, package_{package} {
     setUserTristate(true);
   }
 
@@ -120,7 +114,7 @@ BuildSetInfo parseBuildSet(const QStringList& initialBuildExpressions) {
   BuildSetInfo result;
   for (const auto& labelStr : initialBuildExpressions) {
     // TODO: Conversion from QString to std::string.
-    const auto& labelStdStr = labelStr.toStdString();
+    const auto& labelStdStr     = labelStr.toStdString();
     const auto maybeParsedLabel = BazelLabel::parse(labelStdStr);
     if (!maybeParsedLabel) {
       qCWarning(BazelPluginLog) << "Can't parse build target expression: '" << labelStr << "'";
@@ -139,8 +133,7 @@ BuildSetInfo parseBuildSet(const QStringList& initialBuildExpressions) {
 /// @arg subdirectory - project subdirectory to create an item for.
 /// @arg initialBuildSet - build set used to mark the items (uncheked/checked/partially)
 std::unique_ptr<QStandardItem> buildModelItem(
-  std::shared_ptr<const ProjectSubDirectory> subdirectory,
-  const BuildSetInfo& initialBuildSet
+  std::shared_ptr<const ProjectSubDirectory> subdirectory, const BuildSetInfo& initialBuildSet
 ) {
   const bool dirInBuildSet = [&subdirectory, &initialBuildSet]() {
     for (const auto& [packageDirPath, _] : initialBuildSet) {
@@ -162,8 +155,7 @@ std::unique_ptr<QStandardItem> buildModelItem(
   const auto subPackagesBuildSetIter = initialBuildSet.find(subdirectory->dirPath() + "/...");
 
   bool markAllImmediateChildren = dirInBuildSet;
-  bool markAllSubPackages =
-    subPackagesBuildSetIter != initialBuildSet.end()
+  bool markAllSubPackages       = subPackagesBuildSetIter != initialBuildSet.end()
     && subPackagesBuildSetIter->second.count("all");
 
 
@@ -206,16 +198,12 @@ std::unique_ptr<QStandardItem> buildModelItem(
 // PUBLIC
 
 BazelBuildTargetsModel::BazelBuildTargetsModel()
-: QStandardItemModel()
-{
-  connect(
-    this, &BazelBuildTargetsModel::itemChanged,
-    this, &BazelBuildTargetsModel::onItemChanged
-  );
+  : QStandardItemModel() {
+  connect(this, &BazelBuildTargetsModel::itemChanged, this, &BazelBuildTargetsModel::onItemChanged);
 }
 
 void BazelBuildTargetsModel::setProjectData(
-const BazelWorkspace* projectWorkspace, const QStringList& initialBuildExpressions
+  const BazelWorkspace* projectWorkspace, const QStringList& initialBuildExpressions
 ) {
   beginResetModel();
   clear();
@@ -223,7 +211,7 @@ const BazelWorkspace* projectWorkspace, const QStringList& initialBuildExpressio
   if (projectWorkspace) {
     const auto& initialBuildSet = parseBuildSet(initialBuildExpressions);
     invisibleRootItem()->appendRow(
-        buildModelItem(projectWorkspace->rootPackage(), initialBuildSet).release()
+      buildModelItem(projectWorkspace->rootPackage(), initialBuildSet).release()
     );
     return;
   }
@@ -233,7 +221,8 @@ const BazelWorkspace* projectWorkspace, const QStringList& initialBuildExpressio
 const QStringList BazelBuildTargetsModel::buildExpressions() const {
   QStringList exprs;
   std::transform(
-    selectedBuildables_.cbegin(), selectedBuildables_.cend(),
+    selectedBuildables_.cbegin(),
+    selectedBuildables_.cend(),
     std::back_inserter(exprs),
     [](const BazelBuildableItem* item) { return item->buildExpression(); }
   );

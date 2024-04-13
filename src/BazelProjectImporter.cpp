@@ -3,8 +3,7 @@
 namespace BazelProjectManager::Internal {
 
 BazelProjectImporter::BazelProjectImporter(const Utils::FilePath& path)
-  : ProjectExplorer::ProjectImporter(path)
-{
+  : ProjectExplorer::ProjectImporter(path) {
 }
 
 
@@ -13,7 +12,8 @@ Utils::FilePaths BazelProjectImporter::importCandidates() {
 }
 
 QList<void*> BazelProjectImporter::examineDirectory(
-    const Utils::FilePath& importPath, QString* warningMessage) const {
+  const Utils::FilePath& importPath, QString* warningMessage
+) const {
   return {};
 }
 
@@ -25,8 +25,8 @@ ProjectExplorer::Kit* BazelProjectImporter::createKit(void* directoryData) const
   return nullptr;
 }
 
-const QList<ProjectExplorer::BuildInfo>
-BazelProjectImporter::buildInfoList(void* directoryData) const {
+const QList<ProjectExplorer::BuildInfo> BazelProjectImporter::buildInfoList(void* directoryData
+) const {
   return {};
 }
 

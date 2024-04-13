@@ -2,8 +2,8 @@
 #include <string_view>
 #include <vector>
 
-#include "bazel_helpers.h"
 #include <google/protobuf/util/json_util.h>
+#include "bazel_helpers.h"
 
 
 int main(int argc, char** argv) {
@@ -15,8 +15,7 @@ int main(int argc, char** argv) {
   }
 
   const auto& queryResult = BazelProjectManager::Internal::bazelQuery(
-    ".",
-    args.size() > 1 ? QString::fromUtf8(args[1].data(), args[1].length()) : QString{"//..."}
+    ".", args.size() > 1 ? QString::fromUtf8(args[1].data(), args[1].length()) : QString{"//..."}
   );
   const auto n_targets = queryResult.target_size();
 

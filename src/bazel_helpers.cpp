@@ -14,16 +14,12 @@ namespace BazelProjectManager::Internal {
 namespace {
 std::string_view regexMatchToStringView(const std::ssub_match& match) {
   return std::string_view{
-    match.first.base(),
-    static_cast<std::string_view::size_type>(match.length())
+    match.first.base(), static_cast<std::string_view::size_type>(match.length())
   };
 }
 
 QByteArrayView regexMatchToByteArrayView(const std::ssub_match& match) {
-  return QByteArrayView{
-    match.first.base(),
-    static_cast<qsizetype>(match.length())
-  };
+  return QByteArrayView{match.first.base(), static_cast<qsizetype>(match.length())};
 }
 
 QString targetKindToQueryStr(QueryTargetKind kind) {
@@ -45,8 +41,8 @@ QString targetKindToQueryStr(QueryTargetKind kind) {
     }
     default: {
       throw std::runtime_error{
-          "Unsupported QueryTargetKind value: " +
-          std::to_string(static_cast<std::underlying_type_t<QueryTargetKind>>(kind))
+        "Unsupported QueryTargetKind value: "
+        + std::to_string(static_cast<std::underlying_type_t<QueryTargetKind>>(kind))
       };
     }
   }
@@ -59,10 +55,10 @@ QString targetKindToQueryStr(QueryTargetKind kind) {
 std::optional<BazelLabel> BazelLabel::parse(const std::string& label) {
   // TODO: Verify against actual Starlark syntax rules.
   static const std::regex labelRe{
-    "^(@\\S+)?"           // repository
-    "/((/[^/:]*)*)"       // package identifier
-    ":"                   // target separator
-    "(([^/:]+/)*[^/:]+)$" // target
+    "^(@\\S+)?"            // repository
+    "/((/[^/:]*)*)"        // package identifier
+    ":"                    // target separator
+    "(([^/:]+/)*[^/:]+)$"  // target
   };
   std::smatch matchResults;
   if (!std::regex_match(label, matchResults, labelRe)) {
@@ -72,8 +68,8 @@ std::optional<BazelLabel> BazelLabel::parse(const std::string& label) {
 }
 
 BazelLabel::BazelLabel(std::smatch matchResults)
-  : matchResults_{std::move(matchResults)}
-{}
+  : matchResults_{std::move(matchResults)} {
+}
 
 std::string_view BazelLabel::repo() const {
   return regexMatchToStringView(matchResults_[1]);
@@ -128,6 +124,8 @@ blaze_query::QueryResult bazelQuery(const QString& workspaceDir, const QString& 
   bazelProc.start(
     "bazel",
     {
+      // clang-format off
+
       "query", query,
       "--keep_going",  // Don't abort on errors.
       "--relative_locations",
@@ -138,6 +136,8 @@ blaze_query::QueryResult bazelQuery(const QString& workspaceDir, const QString& 
       "--order_output", "deps",  // Default for `proto` output, yet make it  explicit.
       // "--proto:output_rule_attrs", "$is_executable",
       // TODO: Set --proto:output_rule_attrs=... to attributes of actual interest.
+
+      // clang-format on
     }
   );
   bazelProc.waitForFinished();
@@ -157,9 +157,9 @@ blaze_query::QueryResult bazelQuery(const QString& workspaceDir, const QString& 
 
 
 blaze_query::QueryResult queryPackage(
-    const QString& workspaceDir, const QString& packageDirPath, const QueryTargetKind targetKinds
+  const QString& workspaceDir, const QString& packageDirPath, const QueryTargetKind targetKinds
 ) {
-  using U = std::underlying_type_t<QueryTargetKind>;
+  using U  = std::underlying_type_t<QueryTargetKind>;
   using BT = ::blaze_query::Target;
 
   QStringList targetKindExprs;
@@ -170,15 +170,15 @@ blaze_query::QueryResult queryPackage(
     }
   }
   const auto kindsExpr =
-      (targetKinds == QueryTargetKind::AllKinds) ? "*" : targetKindExprs.join("|");
+    (targetKinds == QueryTargetKind::AllKinds) ? "*" : targetKindExprs.join("|");
 
   return bazelQuery(workspaceDir, QString{"kind(\"(%1)\", //%2:*)"}.arg(kindsExpr, packageDirPath));
 }
 
 QStringView compileModeToCLIArg(BazelCompilationMode mode) {
   static const QStringView fastbuild = u"fastbuild";
-  static const QStringView dbg = u"dbg";
-  static const QStringView opt = u"opt";
+  static const QStringView dbg       = u"dbg";
+  static const QStringView opt       = u"opt";
 
   switch (mode) {
     case BazelCompilationMode::Fast: return fastbuild;

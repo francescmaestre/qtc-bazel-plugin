@@ -14,8 +14,8 @@
 
 #include "BazelBuildSystem.h"
 #include "BazelWorkspace.h"
-#include "plugin_constants.h"
 #include "logging.h"
+#include "plugin_constants.h"
 
 
 namespace BazelProjectManager::Internal {
@@ -25,8 +25,8 @@ using namespace ProjectExplorer;
 
 // NOTE: WORKSPACE file name is declared in the plugin's JSON manifest file.
 
-const char BAZEL_WORKSPACE_FILE_NAME[] = "WORKSPACE";
-const char BAZEL_PACKAGE_BUILD_FILE_NAME[] = "BUILD";
+const char BAZEL_WORKSPACE_FILE_NAME[]           = "WORKSPACE";
+const char BAZEL_PACKAGE_BUILD_FILE_NAME[]       = "BUILD";
 const char BAZEL_PACKAGE_BUILD_FILE_NAME_W_EXT[] = "BUILD.bazel";
 
 
@@ -38,14 +38,15 @@ const char BAZEL_PACKAGE_BUILD_FILE_NAME_W_EXT[] = "BUILD.bazel";
 /// @param [in] workspace - Bazel workspace to convert into the project explorer nodes.
 /// @param [in] folderNode - project folder corresponding to a real FS directory.
 /// @param [out] buildFilePaths - sink for Bazel BUILD file paths located in the project.
-/// @param [out] unknownSourcesPart - project part to collect files not belonging to any Bazel target.
+/// @param [out] unknownSourcesPart - project part to collect files not belonging to any Bazel
+/// target.
 /// @param [in] futureInterface - used for cancellation checks.
 void buildExplorerFolderContents(
-    const BazelWorkspace& workspace,
-    FolderNode& folderNode,
-    QSet<Utils::FilePath>& buildFilePaths,
-    ProjectExplorer::RawProjectPart& unknownSourcesPart,
-    QPromise<void>& futureInterface
+  const BazelWorkspace& workspace,
+  FolderNode& folderNode,
+  QSet<Utils::FilePath>& buildFilePaths,
+  ProjectExplorer::RawProjectPart& unknownSourcesPart,
+  QPromise<void>& futureInterface
 ) {
   if (futureInterface.isCanceled()) {
     return;
@@ -54,14 +55,15 @@ void buildExplorerFolderContents(
   const QDir directory{folderNode.filePath().path()};
 
   const auto& folderRelativePath =
-      folderNode.path().relativeChildPath(workspace.workspaceDirPath());
+    folderNode.path().relativeChildPath(workspace.workspaceDirPath());
   const auto packageInThisFolder =
-      workspace.rootPackage()->findSubPackage(folderRelativePath.toString());
+    workspace.rootPackage()->findSubPackage(folderRelativePath.toString());
   if (packageInThisFolder) {
     // TODO: Add overlay icong to the folderNode.
     folderNode.setIcon(ProjectExplorer::DirectoryIcon(Constants::Icons::PACKAGE_OVERLAY_ICON));
 
-    // TODO: Add overlay icong to the BUILD file. Mark accordingly those with `packageContainsErrors`
+    // TODO: Add overlay icong to the BUILD file. Mark accordingly those with
+    // `packageContainsErrors`
 
     // List all build targets of this package (directory).
     for (const auto& target : packageInThisFolder->targets()) {
@@ -71,10 +73,8 @@ void buildExplorerFolderContents(
 
       // List all target's sources and generated files.
       for (const QString& fileAbsPath : target.projectPart.files) {
-        auto fileNode = std::make_unique<FileNode>(
-          Utils::FilePath::fromString(fileAbsPath),
-          FileType::Source
-        );
+        auto fileNode =
+          std::make_unique<FileNode>(Utils::FilePath::fromString(fileAbsPath), FileType::Source);
         // This will add intermediate folder nodes in case file is in a folderNode's subdirectory.
         targetNode->addNestedNode(std::move(fileNode));
 
@@ -95,14 +95,11 @@ void buildExplorerFolderContents(
 
     // Handle WORKSPACE files specially: mark as FileType::Project and add a custom icon.
     // NOTE: WORKSPACE files are not included into Bazel query output.
-    const bool isBazelFile =
-        fileName == BAZEL_WORKSPACE_FILE_NAME ||
-        fileName == BAZEL_PACKAGE_BUILD_FILE_NAME ||
-        fileName == BAZEL_PACKAGE_BUILD_FILE_NAME_W_EXT;
-    auto fileNode = std::make_unique<FileNode>(
-        fileAbsPath,
-        isBazelFile ? FileType::Project : FileType::Unknown
-    );
+    const bool isBazelFile = fileName == BAZEL_WORKSPACE_FILE_NAME
+      || fileName == BAZEL_PACKAGE_BUILD_FILE_NAME
+      || fileName == BAZEL_PACKAGE_BUILD_FILE_NAME_W_EXT;
+    auto fileNode =
+      std::make_unique<FileNode>(fileAbsPath, isBazelFile ? FileType::Project : FileType::Unknown);
     if (isBazelFile) {
       buildFilePaths.insert(fileAbsPath);
       fileNode->setIcon(QIcon{Constants::Icons::BAZEL_ICON});
@@ -120,17 +117,12 @@ void buildExplorerFolderContents(
     if (subdir.startsWith("bazel-")) {
       continue;  // This is one of Bazel's own build dirs. We don't want to go in there.
     }
-    auto subdirNode = std::make_unique<FolderNode>(
-      Utils::FilePath::fromString(directory.filePath(subdir))
-    );
+    auto subdirNode =
+      std::make_unique<FolderNode>(Utils::FilePath::fromString(directory.filePath(subdir)));
     subdirNode->setDisplayName(subdir);
 
     buildExplorerFolderContents(
-        workspace,
-        *subdirNode.get(),
-        buildFilePaths,
-        unknownSourcesPart,
-        futureInterface
+      workspace, *subdirNode.get(), buildFilePaths, unknownSourcesPart, futureInterface
     );
     folderNode.addNode(std::move(subdirNode));
   }
@@ -142,16 +134,14 @@ void buildExplorerFolderContents(
 // --- BazelProject public ---
 
 BazelProject::BazelProject(const Utils::FilePath& fileName)
-  : Project(Constants::Project::MIMETYPE, fileName),
-    cppCodeModelUpdater_{std::make_unique<CppEditor::CppProjectUpdater>()}
-{
+  : Project(Constants::Project::MIMETYPE, fileName)
+  , cppCodeModelUpdater_{std::make_unique<CppEditor::CppProjectUpdater>()} {
   setId(Constants::Project::ID);
   setDisplayName(projectDirectory().fileName());
 
-  setProjectLanguages({
-    ProjectExplorer::Constants::C_LANGUAGE_ID,
-    ProjectExplorer::Constants::CXX_LANGUAGE_ID
-  });
+  setProjectLanguages(
+    {ProjectExplorer::Constants::C_LANGUAGE_ID, ProjectExplorer::Constants::CXX_LANGUAGE_ID}
+  );
 
   setNeedsBuildConfigurations(true);
   setNeedsDeployConfigurations(false);
@@ -170,8 +160,7 @@ BazelProject::~BazelProject() {
   }
 }
 
-DeploymentKnowledge BazelProject::deploymentKnowledge() const
-{
+DeploymentKnowledge BazelProject::deploymentKnowledge() const {
   return DeploymentKnowledge::Bad;
 }
 
@@ -192,35 +181,29 @@ void BazelProject::startProjectStructureUpdate() {
 
   scanFuture_ = Utils::asyncRun(
     ProjectExplorerPlugin::sharedThreadPool(),
-    [this] (QPromise<void>& futureInterface) -> void {
+    [this](QPromise<void>& futureInterface) -> void {
       try {
         // This will query Bazel for all targets in the workspace and build a tree structure of
         // packages and targets.
-        auto workspace = std::make_unique<BazelWorkspace>(workspaceDirPath());
+        auto workspace       = std::make_unique<BazelWorkspace>(workspaceDirPath());
         auto rootProjectNode = std::make_unique<ProjectNode>(workspaceDirPath());
         QSet<Utils::FilePath> buildFilePaths;
         ProjectExplorer::RawProjectPart unknownSourcesPart;
 
         std::optional<ScopedStopwatchLogger> fileScanWatch{"Files scan duration"};
         buildExplorerFolderContents(
-          *workspace,
-          *rootProjectNode,
-          buildFilePaths,
-          unknownSourcesPart,
-          futureInterface
+          *workspace, *rootProjectNode, buildFilePaths, unknownSourcesPart, futureInterface
         );
         fileScanWatch.reset();
 
         // Pass the results back into the owner thread.
         QMetaObject::invokeMethod(
           this,
-          [
-            this,
-            ws = std::move(workspace),
-            rpn = std::move(rootProjectNode),
-            bfs = std::move(buildFilePaths),
-            usp = std::move(unknownSourcesPart)
-          ] () mutable {
+          [this,
+           ws  = std::move(workspace),
+           rpn = std::move(rootProjectNode),
+           bfs = std::move(buildFilePaths),
+           usp = std::move(unknownSourcesPart)]() mutable {
             this->onScanComplete(std::move(ws), std::move(rpn), std::move(bfs), std::move(usp));
           },
           Qt::ConnectionType::QueuedConnection
@@ -239,10 +222,10 @@ void BazelProject::startProjectStructureUpdate() {
 }
 
 void BazelProject::onScanComplete(
-    std::unique_ptr<BazelWorkspace> parsedWorkspace,
-    std::unique_ptr<ProjectExplorer::ProjectNode> parsedRootProjectNode,
-    QSet<Utils::FilePath> buildFilePaths,
-    ProjectExplorer::RawProjectPart unknownSourcesPart
+  std::unique_ptr<BazelWorkspace> parsedWorkspace,
+  std::unique_ptr<ProjectExplorer::ProjectNode> parsedRootProjectNode,
+  QSet<Utils::FilePath> buildFilePaths,
+  ProjectExplorer::RawProjectPart unknownSourcesPart
 ) {
   // This should be finished now, so we don't need to keep hold of it.
   scanFuture_.reset();
@@ -251,7 +234,7 @@ void BazelProject::onScanComplete(
   std::scoped_lock<std::mutex> lock(std::adopt_lock, scannerMutex_);  // Unlock it no matter what.
   setRootProjectNode(std::move(parsedRootProjectNode));
   setExtraProjectFiles(buildFilePaths);
-  workspace_ = std::move(parsedWorkspace);
+  workspace_          = std::move(parsedWorkspace);
   unknownSourcesPart_ = std::move(unknownSourcesPart);
 
   emit projectScanComplete(workspace_ && rootProjectNode());
@@ -266,14 +249,12 @@ void BazelProject::onScanComplete(
   projectParts.push_back(unknownSourcesPart_);
 
   // Actual update is performed on a background thread, this is just triggering it.
-  cppCodeModelUpdater_->update(
-    ProjectUpdateInfo{
-      this,
-      KitInfo{activeTarget()->kit()},  // TODO: What if the active Target changes?
-      activeTarget()->activeBuildConfiguration()->environment(),
-      projectParts
-    }
-  );
+  cppCodeModelUpdater_->update(ProjectUpdateInfo{
+    this,
+    KitInfo{activeTarget()->kit()},  // TODO: What if the active Target changes?
+    activeTarget()->activeBuildConfiguration()->environment(),
+    projectParts
+  });
 }
 
 }  // namespace BazelProjectManager::Internal

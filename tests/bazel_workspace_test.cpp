@@ -3,13 +3,11 @@
 #include <BazelWorkspace.h>
 
 namespace Catch {
-template<>
+template <>
 struct StringMaker<QString> {
-  static std::string convert(QString const& value ) {
-    return "\"" + value.toStdString() + "\"";
-  }
+  static std::string convert(QString const& value) { return "\"" + value.toStdString() + "\""; }
 };
-}
+}  // namespace Catch
 
 namespace BazelProjectManager::Internal::tests {
 
@@ -75,7 +73,6 @@ TEST_CASE() {
 
     CHECK_FALSE(p2->isConsumedBy(QString{"//some/path/sub-package2/..."}));
   }
-
 }
 
 }  // namespace BazelProjectManager::Internal::tests

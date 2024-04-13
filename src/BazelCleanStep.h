@@ -15,8 +15,7 @@ public:
 
 
 /// This implements the invokation of Bazel process to perform a build action on some target.
-class BazelCleanStep final : public ProjectExplorer::AbstractProcessStep
-{
+class BazelCleanStep final : public ProjectExplorer::AbstractProcessStep {
 public:
   /// A designated ctor. Used by the IDE.
   BazelCleanStep(ProjectExplorer::BuildStepList* bsl, Utils::Id id);

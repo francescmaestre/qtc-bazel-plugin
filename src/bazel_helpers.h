@@ -8,8 +8,8 @@
 #include <tuple>
 
 // Qt
-#include <QString>
 #include <QFileInfo>
+#include <QString>
 
 // Bazel
 #include <bazel/src/main/protobuf/build.pb.h>
@@ -51,9 +51,8 @@ private:
 /// WARNING: This struct is NON-OWNING and stores mostly just references!
 struct RuleAttributeRefs {
 private:
-  using StringValueListType = std::remove_reference_t<
-    decltype(std::declval<blaze_query::Attribute>().string_list_value())
-  >;
+  using StringValueListType =
+    std::remove_reference_t<decltype(std::declval<blaze_query::Attribute>().string_list_value())>;
 
 public:
   RuleAttributeRefs(const blaze_query::Rule& rule);
@@ -67,12 +66,10 @@ public:
 /// @param workspaceDir - Directory containing the Bazel workspace to query.
 /// @param query - Query string to execute.
 /// @see https://docs.bazel.build/versions/main/user-manual.html#query
-blaze_query::QueryResult bazelQuery(
-  const QString& workspaceDir, const QString& query
-);
+blaze_query::QueryResult bazelQuery(const QString& workspaceDir, const QString& query);
 
 
-enum class BazelCompilationMode: char{
+enum class BazelCompilationMode : char {
   Fast,
   Dbg,
   Opt,
@@ -85,7 +82,7 @@ enum class BazelCompilationMode: char{
 QStringView compileModeToCLIArg(BazelCompilationMode mode);
 
 
-enum class QueryTargetKind: char {
+enum class QueryTargetKind : char {
   Rule          = 1 << ::blaze_query::Target::Discriminator::Target_Discriminator_RULE,
   SourceFile    = 1 << ::blaze_query::Target::Discriminator::Target_Discriminator_SOURCE_FILE,
   GeneratedFile = 1 << ::blaze_query::Target::Discriminator::Target_Discriminator_GENERATED_FILE,
@@ -111,9 +108,9 @@ enum class QueryTargetKind: char {
 /// @note There might be a bug, but Bazel does not really order source files as dependencies of the
 /// rules using them as inputs.
 blaze_query::QueryResult queryPackage(
-    const QString& workspaceDir,
-    const QString& packageDirPath,
-    const QueryTargetKind targetKinds = QueryTargetKind::AllKinds
+  const QString& workspaceDir,
+  const QString& packageDirPath,
+  const QueryTargetKind targetKinds = QueryTargetKind::AllKinds
 );
 
 }  // namespace BazelProjectManager::Internal
