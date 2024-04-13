@@ -1,22 +1,19 @@
 #pragma once
 
-#include <set>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <thread>
 
-#include <QtCore/QFuture>
 #include <projectexplorer/project.h>
 #include <projectexplorer/rawprojectpart.h>
+#include <QtCore/QFuture>
 
-
-namespace CppEditor {
-class CppProjectUpdater;
-}
 
 namespace ProjectExplorer {
 class BuildTargetInfo;
-}
+class ProjectUpdater;
+}  // namespace ProjectExplorer
 
 namespace BazelProjectManager::Internal {
 
@@ -91,7 +88,7 @@ private:
   // This will collect files not belonging to any Bazel target.
   ProjectExplorer::RawProjectPart unknownSourcesPart_;
 
-  std::unique_ptr<CppEditor::CppProjectUpdater> cppCodeModelUpdater_;
+  std::unique_ptr<ProjectExplorer::ProjectUpdater> cppCodeModelUpdater_;
 };
 
 }  // namespace BazelProjectManager::Internal
