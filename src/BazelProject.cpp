@@ -1,11 +1,11 @@
 #include "BazelProject.h"
 
 #include <coreplugin/icontext.h>
-#include <cppeditor/cppprojectupdater.h>
 #include <projectexplorer/buildconfiguration.h>
 #include <projectexplorer/projectexplorer.h>
 #include <projectexplorer/projectexplorerconstants.h>
 #include <projectexplorer/projectnodes.h>
+#include <projectexplorer/projectupdater.h>
 #include <projectexplorer/rawprojectpart.h>
 #include <projectexplorer/target.h>
 #include <utils/async.h>
@@ -135,7 +135,7 @@ void buildExplorerFolderContents(
 
 BazelProject::BazelProject(const Utils::FilePath& fileName)
   : Project(Constants::Project::MIMETYPE, fileName)
-  , cppCodeModelUpdater_{std::make_unique<CppEditor::CppProjectUpdater>()} {
+  , cppCodeModelUpdater_{ProjectUpdaterFactory::createCppProjectUpdater()} {
   setId(Constants::Project::ID);
   setDisplayName(projectDirectory().fileName());
 
